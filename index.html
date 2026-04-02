@@ -558,29 +558,87 @@
     </div>
   </div>
 
-  <!-- ==================== 订单页 ==================== -->
-  <div class="page" id="page-order">
-    <div class="navbar">
-      <div class="navbar-left"></div>
-      <div class="navbar-title">I Miei Ordini</div>
-      <div class="navbar-right"></div>
-    </div>
-    <div class="order-tabs" id="order-tabs">
-      <div class="order-tab active" onclick="App.switchOrderTab(0)">Tutti</div>
-      <div class="order-tab" onclick="App.switchOrderTab(1)">In attesa</div>
-      <div class="order-tab" onclick="App.switchOrderTab(2)">In preparazione</div>
-      <div class="order-tab" onclick="App.switchOrderTab(3)">Completati</div>
-    </div>
-    <div class="page-body" id="order-body"></div>
-    <div class="tabbar">
-      <div class="tab-item" onclick="App.switchTab('home')"><div class="tab-icon">🏠</div><div class="tab-label">Home</div></div>
-      <div class="tab-item" onclick="App.switchTab('category')"><div class="tab-icon">📦</div><div class="tab-label">Tutti i Prodotti</div></div>
-      <div class="tab-item" onclick="App.switchTab('scan')"><div class="tab-icon">📷</div><div class="tab-label">Scansiona</div></div>
-      <div class="tab-item" onclick="App.switchTab('cart')"><div class="tab-icon">🛒</div><div class="tab-label">Carrello</div><div class="tab-badge" id="cart-badge3" style="display:none">0</div></div>
-      <div class="tab-item active" onclick="App.switchTab('order')"><div class="tab-icon">📋</div><div class="tab-label">I Miei Ordini</div></div>
-      <div class="tab-item" onclick="App.switchTab('profile')"><div class="tab-icon">👤</div><div class="tab-label">Profilo</div></div>
-    </div>
-  </div>
+// ==================== 订单页功能 ====================
+const GSHEET_URL = 'https://script.google.com/macros/s/你的ID/exec';
+
+const App = {
+  currentOrderTab: 0, // 0: Tutti, 1: In attesa, 2: In preparazione, 3: Completati
+  ordersData: [],
+
+  // 加载订单数据
+  loadOrders: function() {
+    fetch(GSHEET_URL + '?action=read')
+      .then(res => res.json())
+      .then(data => {
+        App.ordersData = data;
+        App.renderOrders();
+      })
+      .catch(err => {
+        console.error('订单加载失败:', err);
+      });
+  },
+
+  // 渲染订单到页面
+  renderOrders: function() {
+    const body = document.getElementById('order-body');
+    body.innerHTML = '';
+
+    // 按订单号分组
+    const grouped = {};
+    App.ordersData.forEach(row => {
+      if (!row['订单号']) return;
+      if (!grouped[row['订单号']]) grouped[row['订单号']] = [];
+      grouped[row['订单号']].push(row);
+    });
+
+    Object.keys(grouped).forEach(orderNo => {
+      const items = grouped[orderNo];
+      const first = items[0];
+      let status = (first['status'] || 'in attesa').toLowerCase();
+      let note = first['note'] || '';
+
+      // Tab 筛选
+      if (App.currentOrderTab === 1 && status !== 'in attesa') return;
+      if (App.currentOrderTab === 2 && status !== 'in preparazione') return;
+      if (App.currentOrderTab === 3 && status !== 'completati') return;
+
+      // 状态颜色
+      let color = '#aaa';
+      if (status === 'in preparazione') color = '#f90';
+      if (status === 'completati') color = '#0a0';
+
+      const html = `
+        <div class="order" style="border:1px solid #ccc; padding:10px; margin-bottom:10px; border-radius:5px;">
+          <div><strong>Ordine:</strong> ${orderNo}</div>
+          <div><strong>Stato:</strong> <span style="color:${color}; font-weight:bold;">${status}</span></div>
+          <div><strong>Note:</strong> ${note}</div>
+          <div><strong>Prodotti:</strong></div>
+          <ul>${items.map(i => `<li>${i['商品名称']} x ${i['数量(¥)'] || i['数量']}</li>`).join('')}</ul>
+        </div>
+      `;
+      body.innerHTML += html;
+    });
+  },
+
+  // 切换订单 tab
+  switchOrderTab: function(tabIndex) {
+    App.currentOrderTab = tabIndex;
+    document.querySelectorAll('.order-tab').forEach((el, i) => el.classList.toggle('active', i === tabIndex));
+    App.renderOrders();
+  },
+
+  // 切换底部 tab（保留原有逻辑）
+  switchTab: function(tabName) {
+    console.log('切换到 tab:', tabName);
+    // 这里可以放原有底部 tab 切换逻辑
+  }
+};
+
+// 页面加载时自动获取订单
+window.addEventListener('DOMContentLoaded', () => {
+  App.loadOrders();
+  setInterval(App.loadOrders, 10000); // 每10秒刷新一次
+});
 
   <!-- ==================== 人中心 ==================== -->
   <div class="page" id="page-profile">
@@ -2360,3 +2418,4 @@ if(!IS_LOCAL_HOST){
 <!-- 更新时间: 2026-04-02 06:40:09 -->
 <!-- 更新时间: 2026-04-02 07:36:48 -->
 <!-- 更新时间: 2026-04-02 23:21:27 -->
+<!-- 更新时间: 2026-04-03 00:35:38 -->
