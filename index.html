@@ -883,6 +883,7 @@ fetch('goods.json')
 // App 主逻辑
 // =====================================================
 const App = (function(){
+  var GSHEET_URL = 'https://script.google.com/macros/s/AKfycbxRBzlt4dIZuOytNKc6nEgJabz_eet3ftVHo2-XgZcOr0rOve-uIJO1uVStFkkg8SBl/exec';
   let state = {
     currentTab: 'home',
     currentPage: 'page-home',
@@ -1895,7 +1896,7 @@ function buyNow() {
               (actualStatus === 'done' ? '<button class="order-btn primary" onclick="App.reorder(\'' + o.no + '\')">Ordina di Nuovo</button>' : '') +
               (actualStatus === 'processing' ? '<button class="order-btn primary" onclick="App.showToast(\'Funzione tracciamento in sviluppo…\')">Traccia Spedizione</button>' : '') +
               '<button class="order-btn" style="color:var(--primary);border-color:var(--primary);" onclick="App.exportOrderExcel(\'' + o.no + '\')">📥 Esporta Excel</button>' +
-              '<button class="order-btn" style="color:var(--primary);" onclick="refreshSheetOrders(); renderOrders(); showToast(\'🔄 刷新中…\')">🔄 刷新</button>' +
+              '<button class="order-btn" style="color:var(--primary);" onclick="App.refreshSheetOrders(); App.renderOrders(); App.showToast(\'🔄 刷新中…\')">🔄 刷新</button>' +
             '</div>' +
           '</div>' +
         '</div>';
@@ -2363,6 +2364,58 @@ function buyNow() {
     showToast('Esportazione riuscita, apri il file CSV con Excel');
   }
 
+  // 上传订单到 Google Sheets（每个商品单独一行，分列写入）
+  function sendOrderToSheet(order){
+    if(!GSHEET_URL) return;
+    var addr = order.address || {};
+    var addrText = (addr.province||'') + (addr.city||'') + (addr.district||'') + (addr.detail||'');
+
+    // 构造结构化商品明细数组（强制转数字，防止price是字符串导致toFixed报错）
+    var itemRows = (order.items || []).map(function(i){
+      var price  = parseFloat(i.price)  || 0;
+      var qty    = parseInt(i.qty)      || 0;
+      var specQty = 1;
+      try { specQty = getSpecQty(i.spec, i.goodId); } catch(e) { console.warn('[GSheet] getSpecQty error:', e); }
+      var amount = parseFloat((price * qty * specQty).toFixed(2));
+      var label = '';
+      if(i.tag && Array.isArray(i.tag) && i.tag.length > 0){
+        label = i.tag.join(',');
+      }
+      return {
+        item_no:     String(i.goodId || ''),
+        item_name:   String(i.name   || ''),
+        item_spec:   String(i.spec   || ''),
+        item_label:  label,
+        item_qty:    qty,
+        item_price:  parseFloat(price.toFixed(2)),
+        item_amount: amount
+      };
+    });
+
+    console.log('[GSheet] 发送订单:', order.no, 'items:', itemRows.length, 'total:', order.total);
+
+    var payload = {
+      order_no:    order.no    || '',
+      order_time:  order.time  || '',
+      buyer_name:  addr.name   || '',
+      buyer_phone: addr.phone  || '',
+      address:     addrText,
+      remark:      order.remark || '',
+      total:       parseFloat((order.total || 0).toFixed(2)),
+      items:       itemRows
+    };
+
+    var url = GSHEET_URL + '?data=' + encodeURIComponent(JSON.stringify(payload));
+    console.log('[GSheet] payload items count:', itemRows.length);
+    try {
+      fetch(url, { method: 'GET', mode: 'no-cors' })
+        .then(function(){ console.log('[GSheet] 同步成功, order:', order.no); })
+        .catch(function(err){ console.warn('[GSheet] 同步失败:', err); });
+    } catch(e) {
+      console.error('[GSheet] fetch 异常:', e);
+    }
+  }
+
   return {
     switchTab,showPage,goBack,
     switchCat,switchCat2,
@@ -2373,7 +2426,7 @@ function buyNow() {
     addToCart,quickAddCart,buyNow,
     clearCart,renderCart,toggleCartCheck,toggleCheckAll,changeCartQty,removeCartItem,
     goCheckout,submitOrder,
-    renderOrders,switchOrderTab,cancelOrder,reorder,exportOrderExcel,
+    renderOrders,switchOrderTab,cancelOrder,reorder,exportOrderExcel,refreshSheetOrders,
     renderProfile,showEditProfile,saveProfile,clearAllData,
     showAddAddress,editAddress,saveAddress,deleteAddress,setDefaultAddr,renderAddress,
     closeModal,showToast,
@@ -2504,66 +2557,7 @@ if(!IS_LOCAL_HOST){
     emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
   }
 
-  // ===== Google Sheets 订单同步配置 =====
-  var GSHEET_URL = 'https://script.google.com/macros/s/AKfycbxRBzlt4dIZuOytNKc6nEgJabz_eet3ftVHo2-XgZcOr0rOve-uIJO1uVStFkkg8SBl/exec';
 
-
-  // 上传订单到 Google Sheets（每个商品单独一行，分列写入）
-  // 用 GET + URL参数方式，彻底绕开 no-cors 的 Content-Type 限制
-  function sendOrderToSheet(order){
-    if(!GSHEET_URL) return;
-    var addr = order.address || {};
-    var addrText = (addr.province||'') + (addr.city||'') + (addr.district||'') + (addr.detail||'');
-
-    // 构造结构化商品明细数组（强制转数字，防止price是字符串导致toFixed报错）
-    var itemRows = (order.items || []).map(function(i){
-      var price  = parseFloat(i.price)  || 0;
-      var qty    = parseInt(i.qty)      || 0;
-      var specQty = 1;
-      try { specQty = getSpecQty(i.spec, i.goodId); } catch(e) { console.warn('[GSheet] getSpecQty error:', e); }
-      var amount = parseFloat((price * qty * specQty).toFixed(2));  // 箱数 × 每箱数量 × 单价
-      var label = ''; // 从商品的 tag 数组获取标签
-      if(i.tag && Array.isArray(i.tag) && i.tag.length > 0){
-        label = i.tag.join(',');
-      }
-      return {
-        item_no:     String(i.goodId || ''),
-        item_name:   String(i.name   || ''),
-        item_spec:   String(i.spec   || ''),
-        item_label:  label,
-        item_qty:    qty,
-        item_price:  parseFloat(price.toFixed(2)),
-        item_amount: amount
-      };
-    });
-
-    console.log('[GSheet] order.items:', JSON.stringify(order.items));
-    console.log('[GSheet] itemRows:', JSON.stringify(itemRows));
-
-    var payload = {
-      order_no:    order.no    || '',
-      order_time:  order.time  || '',
-      buyer_name:  addr.name   || '',
-      buyer_phone: addr.phone  || '',
-      address:     addrText,
-      remark:      order.remark || '',
-      total:       parseFloat((order.total || 0).toFixed(2)),
-      items:       itemRows
-    };
-
-    console.log('[GSheet] payload items count:', itemRows.length);
-
-    // 用 GET 请求把 JSON 放在 data 参数里，Apps Script 用 e.parameter.data 读取
-    var url = GSHEET_URL + '?data=' + encodeURIComponent(JSON.stringify(payload));
-    console.log('[GSheet] 发送订单:', order.no, 'items:', itemRows.length, 'total:', payload.total);
-    try {
-      fetch(url, { method: 'GET', mode: 'no-cors' })
-        .then(function(){ console.log('[GSheet] 同步成功, order:', order.no); })
-        .catch(function(err){ console.warn('[GSheet] 同步失败:', err); });
-    } catch(e) {
-      console.error('[GSheet] fetch 异常:', e);
-    }
-  }
 
   // 发送订单通知邮 pezzi
   function sendOrderEmail(order){
