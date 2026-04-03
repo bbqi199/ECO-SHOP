@@ -2208,6 +2208,17 @@ function buyNow() {
         }
         const wb = XLSX.read(data, {type:'array', cellText:true, cellDates:true});
         const ws = wb.Sheets[wb.SheetNames[0]];
+        // 强制第一列(编号列)为文本格式，防止前导零丢失（如090变成90）
+        // SheetJS读数字后设为's'类型并重新格式化，保留前导零
+        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+        for(let r = range.s.r; r <= range.e.r; r++){
+          const addr = XLSX.utils.encode_cell({r:r, c:0});
+          if(ws[addr] && ws[addr].t === 'n'){
+            ws[addr].t = 's';
+            ws[addr].v = String(ws[addr].v);
+            delete ws[addr].w; // 删除缓存，让SheetJS重新格式化
+          }
+        }
         // raw:false 使用格式化文本值（保留EAN大数精度），defval:''避免undefined
         const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
         processExcelRows(rows);
