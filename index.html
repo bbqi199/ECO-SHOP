@@ -1358,13 +1358,21 @@ const App = (function(){
   // ---------- Carrello ----------
   function cartKey(goodId, spec){ return `${goodId}__${spec}`; }
   
-  // 从Specifiche描述中提取最后出现的数字作为Quantità（如"6包/提"→6，"550ml×24"→24，"10片装"→10）
-  function getSpecQty(spec){
+  // 获取商品每箱数量：从 GOODS_DATA 中找到同 id 的所有记录，取最大的 spec 值
+  // 例如：spec=1 (箱价) 和 spec=6 (件价) 共存时，每箱 = 6 件
+  function getSpecQty(spec, goodId){
     if(!spec) return 1;
-    // 如果Specifiche已经是纯数字，直接解析
+    // 如果传了 goodId，从同 id 所有记录中找最大 spec（非 1 的优先）
+    if(goodId){
+      const sameIdItems = GOODS_DATA.filter(x => String(x.id) === String(goodId));
+      if(sameIdItems.length > 1){
+        const specNums = sameIdItems.map(x => parseInt(x.spec, 10)).filter(n => !isNaN(n) && n > 1);
+        if(specNums.length > 0) return Math.max(...specNums);
+      }
+    }
+    // 回退：从 spec 字符串解析数字
     const parsed = parseInt(spec, 10);
     if(!isNaN(parsed)) return parsed;
-    // 否则尝试从字符串中提取数字
     const numMatch = spec.match(/\d+/g);
     return numMatch ? parseInt(numMatch[numMatch.length-1], 10) : 1;
   }
@@ -1478,7 +1486,7 @@ function buyNow() {
     // 计算实际Totale Prodotti：箱数 × Specifiche数
     const total=state.cartItems.reduce((s,i)=>{
       const g=GOODS_DATA.find(x=>String(x.id)===String(i.goodId));
-      const specQty = g ? getSpecQty(i.spec) : 1;
+      const specQty = g ? getSpecQty(i.spec, i.goodId) : 1;
       return s + (i.qty * specQty);
     },0);
     ['cart-badge','cart-badge2','cart-badge3','cart-badge4','cart-badge5'].forEach(id=>{
@@ -1501,7 +1509,7 @@ function buyNow() {
     const checkedItems=state.cartItems.filter(i=>i.checked);
     const total=checkedItems.reduce((s,i)=>{
       const g=GOODS_DATA.find(x=>String(x.id)===String(i.goodId));
-      const specQty = getSpecQty(i.spec);
+      const specQty = getSpecQty(i.spec, i.goodId);
       const actualQty = i.qty * specQty;
       return s+(g?g.price*actualQty:0);
     },0);
@@ -1510,7 +1518,7 @@ function buyNow() {
       <div class="cart-list">${state.cartItems.map((item,idx)=>{
         const g=GOODS_DATA.find(x=>String(x.id)===String(item.goodId));
         if(!g) return '';
-        const specQty = getSpecQty(item.spec);  // SpecificheQuantità
+        const specQty = getSpecQty(item.spec, item.goodId);  // SpecificheQuantità
         const actualQty = item.qty * specQty;  // 实际商品Quantità
         return `<div class="cart-item">
           <div class="cart-check ${item.checked?'checked':''}" onclick="App.toggleCartCheck(${idx})">${item.checked?'✓':''}</div>
@@ -1573,7 +1581,7 @@ function buyNow() {
     const defaultAddr = state.addresses.find(a=>a.isDefault) || state.addresses[0];
     const subtotal=items.reduce((s,i)=>{
       const g=GOODS_DATA.find(x=>String(x.id)===String(i.goodId));
-      const specQty = getSpecQty(i.spec);
+      const specQty = getSpecQty(i.spec, i.goodId);
       const actualQty = i.qty * specQty;
       return s+(g?g.price*actualQty:0);
     },0);
@@ -1592,7 +1600,7 @@ function buyNow() {
         <div class="checkout-goods">${items.map(item=>{
           const g=GOODS_DATA.find(x=>String(x.id)===String(item.goodId));
           if(!g) return '';
-          const specQty = getSpecQty(item.spec);  // SpecificheQuantità
+          const specQty = getSpecQty(item.spec, item.goodId);  // SpecificheQuantità
           const actualQty = item.qty * specQty;  // 实际商品Quantità
           const itemTotal = g.price * actualQty;  // 该商品总价
           return `<div class="checkout-goods-item">
@@ -1841,7 +1849,7 @@ function buyNow() {
           '</div>' +
           '<div class="order-goods-list">' + o.items.map(function(item) {
             var og = GOODS_DATA.find(function(x) { return String(x.id) === String(item.goodId); }) || {id:item.goodId, emoji:item.emoji||'📦', imageUrl:''};
-            var specQty = getSpecQty(item.spec);
+            var specQty = getSpecQty(item.spec, item.goodId);
             var actualQty = item.qty * specQty;
             var itemTotal = item.price * actualQty;
             return '<div class="order-goods-row">' + goodsImgHtml(og,'order-goods-img') +
@@ -1894,7 +1902,7 @@ function buyNow() {
 
     // 商品明细
     const goodsRows = o.items.map(i=>{
-      const specQty = getSpecQty(i.spec);
+      const specQty = getSpecQty(i.spec, i.goodId);
       const actualQty = i.qty * specQty;
       const itemTotal = i.price * actualQty;
       return [
@@ -2473,14 +2481,6 @@ if(!IS_LOCAL_HOST){
   // ===== Google Sheets 订单同步配置 =====
   var GSHEET_URL = 'https://script.google.com/macros/s/AKfycbxRBzlt4dIZuOytNKc6nEgJabz_eet3ftVHo2-XgZcOr0rOve-uIJO1uVStFkkg8SBl/exec';
 
-  // 从Specifiche描述中提取最后出现的数字作为Quantità
-  function getSpecQty(spec){
-    if(!spec) return 1;
-    const parsed = parseInt(spec, 10);
-    if(!isNaN(parsed)) return parsed;
-    const numMatch = spec.match(/\d+/g);
-    return numMatch ? parseInt(numMatch[numMatch.length-1], 10) : 1;
-  }
 
   // 上传订单到 Google Sheets（每个商品单独一行，分列写入）
   // 用 GET + URL参数方式，彻底绕开 no-cors 的 Content-Type 限制
@@ -2493,8 +2493,8 @@ if(!IS_LOCAL_HOST){
     var itemRows = (order.items || []).map(function(i){
       var price  = parseFloat(i.price)  || 0;
       var qty    = parseInt(i.qty)      || 0;
-      var specQty = getSpecQty(i.spec);
-      var amount = parseFloat((price * qty * specQty).toFixed(2));  // 箱数 × Specifiche数 × Prezzo Unitario
+      var specQty = getSpecQty(i.spec, i.goodId);
+      var amount = parseFloat((price * qty * specQty).toFixed(2));  // 箱数 × 每箱数量 × 单价
       var label = ''; // 从商品的 tag 数组获取标签
       if(i.tag && Array.isArray(i.tag) && i.tag.length > 0){
         label = i.tag.join(',');
