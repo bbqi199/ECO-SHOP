@@ -1703,6 +1703,17 @@ function buyNow() {
   // 已展示过的通知ID集合（避免重复弹窗）
   var _notifiedIds = {};
 
+  // 标准化状态值（意大利语/中文/英文 → 统一英文 key）
+  function normalizeStatus(s) {
+    s = (s || '').trim().toLowerCase();
+    if (s === 'pending' || s === 'in attesa') return 'pending';
+    if (s === 'processing' || s === 'in preparazione') return 'processing';
+    if (s === 'done' || s === 'completati' || s === 'completato') return 'done';
+    if (s === 'cancelled' || s === 'annullato') return 'cancelled';
+    if (s === 'spedito' || s === 'shipped') return 'spedito';
+    return s;
+  }
+
   // 合并 Sheet 数据到本地订单（含状态变化检测 + 通知）
   function mergeSheetToOrders(localOrders, sheetData) {
     if (!sheetData || !Array.isArray(sheetData)) return localOrders;
@@ -1711,7 +1722,7 @@ function buyNow() {
       var orderNo = row.order_no || row['订单号'];
       if (!orderNo) return;
       sheetByOrder[orderNo] = {
-        status: (row.status || row['状态'] || 'pending').toLowerCase(),
+        status: normalizeStatus(row.status || row['状态'] || 'pending'),
         merchantNote: row.merchant_note || row['商家留言'] || '',
         lastUpdate: row.last_update || row['更新时间'] || ''
       };
@@ -1719,14 +1730,14 @@ function buyNow() {
 
     // 检测变化，收集需要通知的订单
     var notifications = [];
-    var statusEmoji = { pending: '⏳', processing: '📦', done: '✅', cancelled: '❌' };
-    var statusText = { pending: 'In attesa', processing: 'In preparazione', done: 'Completati', cancelled: 'Annullato' };
+    var statusEmoji = { pending: '⏳', processing: '📦', done: '✅', cancelled: '❌', spedito: '🚚', 'in attesa': '⏳', 'in preparazione': '📦', completati: '✅', annullato: '❌' };
+    var statusText = { pending: 'In attesa', processing: 'In preparazione', done: 'Completati', cancelled: 'Annullato', spedito: 'Spedito', 'in attesa': 'In attesa', 'in preparazione': 'In preparazione', completati: 'Completati', annullato: 'Annullato' };
 
     return localOrders.map(function(order) {
       var si = sheetByOrder[order.no];
       if (si) {
-        var oldStatus = (order.status || 'pending').toLowerCase();
-        var newStatus = si.status.toLowerCase();
+        var oldStatus = normalizeStatus(order.status || 'pending');
+        var newStatus = normalizeStatus(si.status);
         var noteChanged = si.merchantNote && si.merchantNote !== (order.merchantNote || '');
         var statusChanged = newStatus !== oldStatus && newStatus !== oldStatus;
         var notifyKey = order.no + '_' + newStatus + '_' + si.merchantNote;
@@ -1799,10 +1810,11 @@ function buyNow() {
   function renderOrders(){
     var self = this;
     loadOrdersFromSheet(function(sheetData) {
-      var mergedOrders = mergeSheetToOrders(state.orders, sheetData);
+      var ordersArray = (sheetData && Array.isArray(sheetData.orders)) ? sheetData.orders : (Array.isArray(sheetData) ? sheetData : []);
+      var mergedOrders = mergeSheetToOrders(state.orders, ordersArray);
       var body = $('order-body');
-      var statusMap = {pending:'In attesa',processing:'In preparazione',done:'Completati',cancelled:'Annullato'};
-      var statusClass = {pending:'pending',processing:'processing',done:'done',cancelled:'cancelled'};
+      var statusMap = {pending:'In attesa',processing:'In preparazione',done:'Completati',cancelled:'Annullato',spedito:'Spedito'};
+      var statusClass = {pending:'pending',processing:'processing',done:'done',cancelled:'cancelled',spedito:'spedito'};
       var list = mergedOrders;
       if (state.orderTabIdx === 1) list = mergedOrders.filter(function(o) { var s=(o.status||'').toLowerCase(); return s==='pending'||s==='in attesa'; });
       else if (state.orderTabIdx === 2) list = mergedOrders.filter(function(o) { var s=(o.status||'').toLowerCase(); return s==='processing'||s==='in preparazione'; });
@@ -1815,7 +1827,7 @@ function buyNow() {
         var actualStatus = (o.status || 'pending').toLowerCase();
         if (actualStatus === 'in attesa') actualStatus = 'pending';
         if (actualStatus === 'in preparazione') actualStatus = 'processing';
-        if (actualStatus === 'completati') actualStatus = 'done';
+        if (actualStatus === 'completati' || actualStatus === 'completato') actualStatus = 'done';
         if (actualStatus === 'annullato') actualStatus = 'cancelled';
         var statusText = statusMap[actualStatus] || actualStatus;
         var statusCls = statusClass[actualStatus] || 'pending';
