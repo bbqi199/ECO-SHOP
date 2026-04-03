@@ -1759,13 +1759,13 @@ function buyNow() {
       }
       return order;
     }).filter(function() {
-      // 显示通知（在 map 之后触发）
-      if (notifications.length > 0) {
-        showOrderNotifications(notifications);
-        notifications.length = 0; // 清空防止重复
-      }
       return true;
     });
+
+    // 在 map/filter 结束后统一弹一次通知
+    if (notifications.length > 0) {
+      showOrderNotifications(notifications);
+    }
   }
 
   // 弹出订单通知
@@ -1811,7 +1811,8 @@ function buyNow() {
     var self = this;
     loadOrdersFromSheet(function(sheetData) {
       var ordersArray = (sheetData && Array.isArray(sheetData.orders)) ? sheetData.orders : (Array.isArray(sheetData) ? sheetData : []);
-      var mergedOrders = mergeSheetToOrders(state.orders, ordersArray);
+      state.orders = mergeSheetToOrders(state.orders, ordersArray);
+      var mergedOrders = state.orders;
       var body = $('order-body');
       var statusMap = {pending:'In attesa',processing:'In preparazione',done:'Completati',cancelled:'Annullato',spedito:'Spedito'};
       var statusClass = {pending:'pending',processing:'processing',done:'done',cancelled:'cancelled',spedito:'spedito'};
@@ -2075,7 +2076,7 @@ function buyNow() {
     if(GSHEET_URL && state.orders.length > 0) {
       setTimeout(function() {
         refreshSheetOrders().then(function(sheetData) {
-          mergeSheetToOrders(state.orders, sheetData.orders || []);
+          state.orders = mergeSheetToOrders(state.orders, sheetData.orders || []);
           save();
         });
       }, 1500);
