@@ -7,6 +7,12 @@
 <style>
   /* ===== 全局重置 ===== */
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  /* ===== 电脑端滚动条（稍粗） ===== */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #f0f0f0; }
+  ::-webkit-scrollbar-thumb { background: #bbb; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #999; }
   :root {
     --primary: #FF5A1F;
     --primary-light: #fff3ef;
@@ -892,7 +898,7 @@ fetch('goods.json')
 // App 主逻辑
 // =====================================================
 const App = (function(){
-  var GSHEET_URL = 'https://script.google.com/macros/s/AKfycbxRBzlt4dIZuOytNKc6nEgJabz_eet3ftVHo2-XgZcOr0rOve-uIJO1uVStFkkg8SBl/exec';
+  var GSHEET_URL = 'https://script.google.com/macros/s/AKfycbxaKZqHiZP324LVnaNjBw0KCYxh6AlADBIQHztwqIWO_Vkboa_Ny6IaFCJe-l5ky8FX/exec';
   let state = {
     currentTab: 'home',
     currentPage: 'page-home',
@@ -6926,10 +6932,15 @@ function buyNow() {
       items:       itemRows
     };
 
-    var url = GSHEET_URL + '?data=' + encodeURIComponent(JSON.stringify(payload));
+    var url = GSHEET_URL + '?action=addOrder';
     console.log('[GSheet] payload items count:', itemRows.length);
     try {
-      fetch(url, { method: 'GET', mode: 'no-cors' })
+      fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
         .then(function(){ console.log('[GSheet] 同步成功, order:', order.no); })
         .catch(function(err){ console.warn('[GSheet] 同步失败:', err); });
     } catch(e) {
