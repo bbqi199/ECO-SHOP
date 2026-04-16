@@ -5938,7 +5938,7 @@ function getImgUrl(g){
     // 每次加1箱
     if(existing){ existing.qty+=1; }
     else { state.cartItems.push({key,goodId:g.id,spec,qty:1,checked:true}); }
-    save(); updateCartBadge(); showToast('+1 cartone aggiunto al carrello');
+    save(); updateCartBadge(); /* showToast removed */;
   }
 function buyNow() {
     // 只有当Carrello里没有当前选中的商品时，才执行加购
