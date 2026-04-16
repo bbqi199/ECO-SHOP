@@ -400,6 +400,19 @@
     font-size: 15px; font-weight: 600; cursor: pointer; text-align: center;
   }
   .notify-close-btn:active { opacity: 0.85; }
+
+  /* ===== 电脑端显示滚动条 ===== */
+  @media screen and (min-width: 431px) {
+    .page-body::-webkit-scrollbar { display: block !important; width: 6px; }
+    .page-body::-webkit-scrollbar-track { background: #f0f0f0; }
+    .page-body::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px; }
+    .goods-panel::-webkit-scrollbar { display: block !important; width: 6px; }
+    .goods-panel::-webkit-scrollbar-track { background: #f0f0f0; }
+    .goods-panel::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px; }
+    .cart-list::-webkit-scrollbar { display: block !important; width: 6px; }
+    .cart-list::-webkit-scrollbar-track { background: #f0f0f0; }
+    .cart-list::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px; }
+  }
 </style>
 </head>
 <body>
