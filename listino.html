@@ -114,10 +114,10 @@
   .goods-list-spec { font-size:12px; color:var(--text-3); margin-top:4px; }
   .goods-list-bottom { display:flex; align-items:center; justify-content:space-between; margin-top:6px; }
   .goods-unit { font-size:12px; color:var(--text-3); }
-  .stepper { display:flex; align-items:center; gap:6px; }
-  .stepper-btn { width:24px; height:24px; border-radius:50%; background:var(--primary); color:#fff; border:none; font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .stepper { display:flex; align-items:center; gap:3px; }
+  .stepper-btn { width:20px; height:20px; border-radius:50%; background:var(--primary); color:#fff; border:none; font-size:11px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
   .stepper-btn.minus { background:#f0f0f0; color:var(--text-2); }
-  .stepper-num { font-size:14px; font-weight:600; min-width:20px; text-align:center; color:var(--text); }
+  .stepper-num { font-size:11px; font-weight:600; min-width:16px; text-align:center; color:var(--text); }
 
   /* ===== 商品详情页 ===== */
   .detail-img { width:100%; aspect-ratio:1; background:#f5f5f5; display:flex; align-items:center; justify-content:center; font-size:80px; position:relative; overflow:hidden; }
@@ -27885,11 +27885,7 @@ nary图片，不回退本地 ----------
   const _imgCache = {}; // id → url | null (null=无图)
 
   function getImgUrl(g){
-    // 优先使用 B2 图片映射
-    if(g.id && B2_IMG_MAP[String(g.id)]) {
-      return 'https://old-boat-9019.zongweihai199.workers.dev/' + B2_IMG_MAP[String(g.id)];
-    }
-    // 次选：直接用商品ID构造B2 URL（覆盖大部分情况）
+    // 直接使用 B2 公开 URL（B2 本身有 CDN 缓存）
     if(g.id) {
       return 'https://f003.backblazeb2.com/file/ECOSHOP/' + String(g.id) + '.jpg';
     }
@@ -27991,14 +27987,14 @@ nary图片，不回退本地 ----------
     if(!grid) return;
     const slice = _pageList.slice(_pageOffset, _pageOffset + PAGE_SIZE);
     grid.insertAdjacentHTML('beforeend', slice.map(g=>`
-      <div class="goods-card" onclick="App.openDetail('${g.id}')">
+      <div class="goods-card" data-id="${g.id}" onclick="App.openDetail('${g.id}')">
         ${goodsImgHtml(g,'goods-img')}
         <div class="goods-info">
           <div class="goods-name">${g.name}</div>
           <div class="goods-id">编号：${g.id}</div>
           <div class="goods-bottom">
-            <div class="goods-price">${formatPrice(g.price)}<span>/${g.unit}${g.spec ? ' · '+g.spec : ''}</span></div>
-            <button class="add-btn" onclick="event.stopPropagation();App.quickAddCart('${g.id}')">+</button>
+            <div class="goods-price">${formatPrice(g.price)}${g.spec ? ' <span style="font-size:11px;color:var(--text-3);">'+g.spec+'</span>' : ''}</div>
+            ${_sp(g.id)}
           </div>
         </div>
       </div>`).join(''));
@@ -28112,6 +28108,50 @@ nary图片，不回退本地 ----------
     else { state.cartItems.push({key,goodId:g.id,spec,qty:1,checked:true}); }
     save(); updateCartBadge(); showToast('已加入购物车 🛒');
   }
+  // 获取购物车中某商品的数量
+  function _qty(gId){
+    const g=GOODS_DATA.find(x=>String(x.id)===String(gId));
+    if(!g) return 0;
+    const spec=g.specs[0];
+    const key=cartKey(g.id,spec);
+    const item=state.cartItems.find(i=>i.key===key);
+    return item ? item.qty : 0;
+  }
+  // 修改购物车数量
+  function _chg(gId,delta){
+    const g=GOODS_DATA.find(x=>String(x.id)===String(gId));
+    if(!g) return;
+    const spec=g.specs[0];
+    const numMatch=spec.match(/\d+/g);
+    const unitQty=numMatch ? parseInt(numMatch[numMatch.length-1],10) : 1;
+    const key=cartKey(g.id,spec);
+    const existing=state.cartItems.find(i=>i.key===key);
+    if(existing){
+      existing.qty+=delta*unitQty;
+      if(existing.qty<=0){ state.cartItems.splice(state.cartItems.indexOf(existing),1); }
+    } else if(delta>0){
+      state.cartItems.push({key,goodId:g.id,spec,qty:unitQty,checked:true});
+    }
+    save(); updateCartBadge();
+    // 刷新当前页的卡片
+    const cards=document.querySelectorAll('.goods-card');
+    cards.forEach(card=>{
+      const id=card.getAttribute('data-id');
+      if(id===String(gId)){
+        const sp=card.querySelector('.stepper');
+        if(sp) sp.outerHTML=_sp(gId);
+      }
+    });
+  }
+  // 生成步进器HTML
+  function _sp(gId){
+    const q=_qty(gId);
+    return'<div class="stepper">'
+      +'<button class="stepper-btn minus" style="visibility:'+(q>0?'inline-flex':'hidden')+'" onclick="event.stopPropagation();_chg(\''+gId+'\',-1)">-</button>'
+      +'<span class="stepper-num">'+q+'</span>'
+      +'<button class="stepper-btn plus" onclick="event.stopPropagation();_chg(\''+gId+'\',1)">+</button>'
+      +'</div>';
+  }
   function quickAddCart(goodId){
     const g=GOODS_DATA.find(x=>String(x.id)===String(goodId));
     if(!g) return;
@@ -28124,6 +28164,12 @@ nary图片，不回退本地 ----------
     if(existing){ existing.qty+=qty; }
     else { state.cartItems.push({key,goodId:g.id,spec,qty,checked:true}); }
     save(); updateCartBadge(); showToast('+'+qty+' 已加入购物车');
+    // 刷新卡片上的步进器
+    const card=document.querySelector('.goods-card[data-id=\"'+g.id+'\"]');
+    if(card){
+      const sp=card.querySelector('.stepper');
+      if(sp) sp.outerHTML=_sp(g.id);
+    }
   }
   function buyNow(){
     addToCart();
