@@ -1041,7 +1041,7 @@ const App = (function(){
       html += '<div onclick="App.openDetail(\'' + g.id + '\')"'
         + ' style="display:flex;align-items:center;gap:10px;background:var(--white);padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;">'
         + '<div style="width:48px;height:48px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#f5f5f5;position:relative;">'
-        + '<img src="' + imgUrl + '" alt="' + g.name + '" style="width:100%;height:100%;object-fit:contain;" onerror="this.onerror=null;this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
+        + '<img src="' + imgUrl + '" alt="' + g.name + '" style="width:100%;height:100%;object-fit:contain;" onerror="tryAlternateExt(this, \'' + g.id + '\')">'
         + '<span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:20px;position:absolute;top:0;left:0;">' + emoji + '</span>'
         + '</div>'
         + '<div style="flex:1;min-width:0;">'
@@ -1115,7 +1115,7 @@ const App = (function(){
       html2 += '<div onclick="App.openDetail(\'' + g.id + '\')"'
         + ' style="display:flex;align-items:center;gap:10px;background:var(--white);padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;">'
         + '<div style="width:48px;height:48px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#f5f5f5;position:relative;">'
-        + '<img src="' + imgUrl2 + '" alt="' + g.name + '" style="width:100%;height:100%;object-fit:contain;" onerror="this.onerror=null;this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
+        + '<img src="' + imgUrl2 + '" alt="' + g.name + '" style="width:100%;height:100%;object-fit:contain;" onerror="tryAlternateExt(this, \'' + g.id + '\')">'
         + '<span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:20px;position:absolute;top:0;left:0;">' + emoji2 + '</span>'
         + '</div>'
         + '<div style="flex:1;min-width:0;">'
@@ -1146,20 +1146,43 @@ const App = (function(){
 
 
 
+
   // ---------- 图片辅助：B2图片，不回退本地 ----------
   const _imgCache = {}; // id → url | null (null=无图)
 
   function getImgUrl(g){
     // 优先使用 B2 图片映射
-    if(g.id && B2_IMG_MAP[String(g.id)]) {
-      return 'https://f003.backblazeb2.com/file/ECOSHOP/' + B2_IMG_MAP[String(g.id)];
+    if(g.id && B2_IMG_MAP && B2_IMG_MAP[String(g.id)]) {
+      return 'https://old-boat-9019.zongweihai199.workers.dev/' + B2_IMG_MAP[String(g.id)];
     }
-    // 次选：直接用商品ID构造B2 URL（覆盖大部分情况）
+    // 次选：直接用商品ID构造B2 URL（小写优先）
     if(g.id) {
-      return 'https://f003.backblazeb2.com/file/ECOSHOP/' + String(g.id) + '.jpg';
+      return 'https://old-boat-9019.zongweihai199.workers.dev/' + String(g.id) + '.jpg';
     }
     return '';
   }
+  
+  // 图片加载失败时尝试其他后缀
+  window.tryAlternateExt = function(img, id) {
+    if(!id) return;
+    if(!window._altExtIdx) window._altExtIdx = {};
+    if(!window._altExtIdx[id]) window._altExtIdx[id] = 0;
+    
+    const exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.JPG', '.JPEG', '.PNG', '.GIF', '.WEBP'];
+    const idx = window._altExtIdx[id];
+    
+    for(let i = idx; i < exts.length; i++) {
+      const newUrl = 'https://old-boat-9019.zongweihai199.workers.dev/' + id + exts[i];
+      if(img.src !== newUrl) {
+        window._altExtIdx[id] = i + 1;
+        img.src = newUrl;
+        return;
+      }
+    }
+    // 所有后缀都试过了，显示emoji
+    img.style.display = 'none';
+    if(img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
+  };
 
   // 生成商品图片HTML：<img> + onerror回退emoji
   function goodsImgHtml(g, cls='goods-img', extraStyle=''){
@@ -1168,7 +1191,7 @@ const App = (function(){
     return `<div class="${cls}" style="position:relative;overflow:hidden;${extraStyle}">
       <img src="${url}" alt="${g.name}"
         style="width:100%;height:100%;object-fit:contain;position:absolute;top:0;left:0;"
-        onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='flex'">
+        onerror="tryAlternateExt(this, '${g.id || ''}')">
       <span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:inherit;position:absolute;top:0;left:0;">${fallback}</span>
     </div>`;
   }
