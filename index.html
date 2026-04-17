@@ -5678,9 +5678,9 @@ const B2_IMG_MAP = {
 // -----------------------------
 
   function getImgUrl(g){
-    // 直接使用 B2 公开 URL（B2 本身有 CDN 缓存）
+    // 使用 Worker 代理地址
     if(g.id) {
-      return 'https://f003.backblazeb2.com/file/ECOSHOP/' + String(g.id) + '.jpg';
+      return 'https://old-boat-9019.zongweihai199.workers.dev/' + String(g.id) + '.jpg';
     }
     return '';
   }
