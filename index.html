@@ -5678,23 +5678,13 @@ const B2_IMG_MAP = {
 // -----------------------------
 
   function getImgUrl(g){
-    // 使用 Worker 代理地址，自动处理大小写
     if(g.id) {
-      const id = String(g.id);
-      // 如果映射表里有，记录了真实后缀，直接用
-      if(B2_IMG_MAP && B2_IMG_MAP[id]) {
-        return 'https://old-boat-9019.zongweihai199.workers.dev/' + B2_IMG_MAP[id];
+      // 优先使用映射表的真实后缀
+      if(B2_IMG_MAP && B2_IMG_MAP[g.id]) {
+        return 'https://old-boat-9019.zongweihai199.workers.dev/' + B2_IMG_MAP[g.id];
       }
-      // 尝试常见后缀（小写优先）
-      const exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.JPG', '.JPEG', '.PNG', '.GIF', '.WEBP'];
-      for(const ext of exts) {
-        const url = 'https://old-boat-9019.zongweihai199.workers.dev/' + id + ext;
-        // 用图片对象的 src 测试（不阻塞）
-        if(!g._imgTested) {
-          g._imgTested = {};
-        }
-        return url; // 返回第一个，图片加载失败时再试其他的
-      }
+      // 默认用小写 jpg
+      return 'https://old-boat-9019.zongweihai199.workers.dev/' + g.id + '.jpg';
     }
     return '';
   }
@@ -5702,23 +5692,19 @@ const B2_IMG_MAP = {
   // 图片加载失败时尝试其他后缀
   window.tryAlternateExt = function(img, id) {
     if(!id) return;
-    if(!window._altExtIdx) window._altExtIdx = {};
-    if(!window._altExtIdx[id]) window._altExtIdx[id] = 0;
-    
-    const exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.JPG', '.JPEG', '.PNG', '.GIF', '.WEBP'];
-    const idx = window._altExtIdx[id];
-    
-    for(let i = idx; i < exts.length; i++) {
-      const newUrl = 'https://old-boat-9019.zongweihai199.workers.dev/' + id + exts[i];
-      if(img.src !== newUrl) {
-        window._altExtIdx[id] = i + 1;
-        img.src = newUrl;
-        return;
-      }
+    const exts = ['.jpeg', '.png', '.gif', '.webp', '.JPG', '.JPEG', '.PNG', '.GIF', '.WEBP'];
+    const current = img.src;
+    for(let i = 0; i < exts.length; i++) {
+      const testUrl = 'https://old-boat-9019.zongweihai199.workers.dev/' + id + exts[i];
+      if(current.indexOf(exts[i]) > 0) continue;
+      img.src = testUrl;
+      return;
     }
-    // 所有后缀都试过了，显示emoji
+    // 全部失败，隐藏图片显示emoji
     img.style.display = 'none';
-    if(img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
+    if(img.nextElementSibling && img.nextElementSibling.tagName === 'SPAN') {
+      img.nextElementSibling.style.display = 'flex';
+    }
   };
 
   // 生成商品图片HTML：<img> + onerror回退emoji
@@ -7217,3 +7203,4 @@ if(!IS_LOCAL_HOST){
 <!-- 更新时间: 2026-04-07 01:25:49 -->
 <!-- 更新时间: 2026-04-07 01:37:25 -->
 <!-- 更新时间: 2026-04-07 02:14:31 -->
+<!-- 更新时间: 2026-04-18 13:24:25 -->
