@@ -6089,7 +6089,7 @@ function buyNow() {
               <div class="cart-price">${formatPrice(g.price*actualQty)}</div>
               <div class="cart-stepper">
                 <button class="cart-btn minus" onclick="App.changeCartQty(${idx},-1)">−</button>
-                <div class="cart-num">${item.qty} cartoni × ${specQty} = ${actualQty}</div>
+                <div class="cart-num">${item.qty} ct × ${specQty} = ${actualQty}</div>
                 <button class="cart-btn" onclick="App.changeCartQty(${idx},1)">+</button>
               </div>
             </div>
@@ -6120,12 +6120,18 @@ function buyNow() {
     save(); renderCart();
   }
   function changeCartQty(idx, delta){
+    const el=$('cart-content');
+    const scrollTop = el ? el.scrollTop : 0;
     state.cartItems[idx].qty=Math.max(1,state.cartItems[idx].qty+delta);
     save(); updateCartBadge(); renderCart();
+    if(el) el.scrollTop = scrollTop;
   }
   function removeCartItem(idx){
+    const el=$('cart-content');
+    const scrollTop = el ? el.scrollTop : 0;
     state.cartItems.splice(idx,1);
     save(); updateCartBadge(); renderCart();
+    if(el) el.scrollTop = scrollTop;
   }
 
   // ---------- 结算 ----------
@@ -7192,4 +7198,4 @@ if(!IS_LOCAL_HOST){
 <!-- 更新时间: 2026-04-07 01:37:25 -->
 <!-- 更新时间: 2026-04-07 02:14:31 -->
 <!-- 更新时间: 2026-04-18 13:24:25 -->
-<!-- 更新时间: 2026-04-21 22:51:31 -->
+<!-- 更新时间: 2026-04-21 22:59:14 -->
