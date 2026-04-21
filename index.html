@@ -896,6 +896,28 @@ const CATEGORIES = [
 
 let GOODS_DATA = [];
 
+// ==================== 全局步进器函数 ====================
+function _sp(gId){
+  var qty = window._qty ? window._qty(gId) : 0;
+  var disabled = qty===0 ? 'style="opacity:0.3;pointer-events:none;"' : '';
+  return '<div style="display:inline-flex;align-items:center;background:var(--bg);border-radius:20px;padding:2px 4px;gap:0;">'
+    + '<button onclick="event.stopPropagation();window._chg(\''+gId+'\',-1)" '+disabled+'>−</button>'
+    + '<span style="min-width:28px;text-align:center;font-size:13px;font-weight:600;color:var(--text);">'+qty+'</span>'
+    + '<button onclick="event.stopPropagation();window._chg(\''+gId+'\',1)">+</button>'
+    + '</div>';
+}
+function _ref(){
+  document.querySelectorAll('[data-sid]').forEach(function(el){
+    var sid=el.getAttribute('data-sid');
+    var html=_sp(sid);
+    var old=el.querySelector('.sp-wrap');
+    if(old) old.outerHTML=html; else {
+      var btn=el.querySelector('button');
+      if(btn){var d=document.createElement('div');d.className='sp-wrap';d.innerHTML=html;btn.parentNode.insertBefore(d,btn.nextSibling);}
+    }
+  });
+}
+
 // 从外部JSON文件加载商品数据
 // 注意：file:// 协议下 fetch 会被浏览器 CORS 拦截，需通过本地服务器 http://localhost 访问
 fetch('goods.json?t=' + Date.now())
@@ -6061,6 +6083,8 @@ function buyNow() {
   }
   function renderCart(){
     const el=$('cart-content');
+    const listEl = el ? el.querySelector('.cart-list') : null;
+    const scrollTop = listEl ? listEl.scrollTop : 0;
     if(state.cartItems.length===0){
       el.innerHTML=`<div class="cart-empty"><div class="cart-empty-icon">🛒</div><div class="cart-empty-text">Il carrello è vuoto～</div><button class="cart-empty-btn" onclick="App.switchTab('home')">Vai allo Shopping</button></div>`;
       return;
@@ -6109,6 +6133,11 @@ function buyNow() {
         <button class="cart-submit" onclick="App.goCheckout()" ${checkedItems.length===0?'disabled':''}>Vai al Checkout</button>
       </div>
     `;
+    // innerHTML 后重新获取 .cart-list，保持滚动位置
+    setTimeout(function(){
+      const newListEl = el ? el.querySelector('.cart-list') : null;
+      if(newListEl) newListEl.scrollTop = scrollTop;
+    }, 10);
   }
   function toggleCartCheck(idx){
     state.cartItems[idx].checked=!state.cartItems[idx].checked;
@@ -6120,18 +6149,26 @@ function buyNow() {
     save(); renderCart();
   }
   function changeCartQty(idx, delta){
-    const el=$('cart-content');
-    const scrollTop = el ? el.scrollTop : 0;
+    const scrollEl = $('cart-content');
+    const listEl = scrollEl ? scrollEl.querySelector('.cart-list') : null;
+    const targetScrollTop = listEl ? listEl.scrollTop : 0;
     state.cartItems[idx].qty=Math.max(1,state.cartItems[idx].qty+delta);
     save(); updateCartBadge(); renderCart();
-    if(el) el.scrollTop = scrollTop;
+    // 保持滚动位置
+    setTimeout(function(){
+      if(listEl) listEl.scrollTop = targetScrollTop;
+    }, 10);
   }
   function removeCartItem(idx){
-    const el=$('cart-content');
-    const scrollTop = el ? el.scrollTop : 0;
+    const scrollEl = $('cart-content');
+    const listEl = scrollEl ? scrollEl.querySelector('.cart-list') : null;
+    const targetScrollTop = listEl ? listEl.scrollTop : 0;
     state.cartItems.splice(idx,1);
     save(); updateCartBadge(); renderCart();
-    if(el) el.scrollTop = scrollTop;
+    // 保持滚动位置
+    setTimeout(function(){
+      if(listEl) listEl.scrollTop = targetScrollTop;
+    }, 10);
   }
 
   // ---------- 结算 ----------
