@@ -898,7 +898,7 @@ let GOODS_DATA = [];
 
 // 从外部JSON文件加载商品数据
 // 注意：file:// 协议下 fetch 会被浏览器 CORS 拦截，需通过本地服务器 http://localhost 访问
-fetch('goods.json')
+fetch('goods.json?t=' + Date.now())
     .then(res => res.json())
     .then(data => {
         GOODS_DATA = data;
