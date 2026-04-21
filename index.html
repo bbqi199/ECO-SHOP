@@ -6113,6 +6113,16 @@ function buyNow() {
       placeholder.style.display = 'none';
       btn.textContent = 'Ferma Camera';
       btn.style.background = '#666';
+      // 手动设置video元素样式
+      setTimeout(function(){
+        var video = reader.querySelector('video');
+        if(video){
+          video.style.width = '100%';
+          video.style.height = '100%';
+          video.style.objectFit = 'contain';
+          video.style.display = 'block';
+        }
+      }, 100);
     }).catch(function(err){
       console.error('Camera start error:', err);
       showToast('Errore avvio camera');
