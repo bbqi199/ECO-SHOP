@@ -6062,6 +6062,9 @@ function buyNow() {
   // ==================== 摄像头扫码 ====================
   var _html5Qr = null;
   var _camRunning = false;
+  var _lastScanCode = '';
+  var _lastScanTime = 0;
+  var _scanCooldown = 2000; // 2秒防重扫间隔
 
   function toggleCamera(){
     if(_camRunning){
@@ -6080,7 +6083,7 @@ function buyNow() {
     _html5Qr = new Html5Qrcode("scan-reader");
 
     const config = {
-      fps: 10,
+      fps: 15,
       qrbox: { width: 300, height: 150 },
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
@@ -6100,11 +6103,30 @@ function buyNow() {
       { facingMode: "environment" },
       config,
       function(decodedText){
+        var now = Date.now();
+        // 防重复扫码：相同条码且在冷却期内
+        if(decodedText === _lastScanCode && now - _lastScanTime < _scanCooldown){
+          return;
+        }
+        _lastScanCode = decodedText;
+        _lastScanTime = now;
+
+        // 震动反馈
+        if(navigator.vibrate) navigator.vibrate(100);
+
+        // 语音反馈
+        try{
+          var utter = new SpeechSynthesisUtterance('扫码成功');
+          utter.lang = 'zh-CN';
+          utter.volume = 1;
+          speechSynthesis.speak(utter);
+        }catch(e){}
+
         _html5Qr.pause(true);
         handleScannedCode(decodedText);
         setTimeout(function(){
           if(_camRunning) _html5Qr.resume();
-        }, 1500);
+        }, 800);
       },
       function(error){}
     ).then(function(){
