@@ -5689,18 +5689,8 @@ const B2_IMG_MAP = {
     return '';
   }
   
-  // 图片加载失败时尝试其他后缀
+  // 图片加载失败时直接显示emoji（R2只有.jpg，无需尝试其他后缀）
   window.tryAlternateExt = function(img, id) {
-    if(!id) return;
-    const exts = ['.jpeg', '.png', '.gif', '.webp', '.JPG', '.JPEG', '.PNG', '.GIF', '.WEBP'];
-    const current = img.src;
-    for(let i = 0; i < exts.length; i++) {
-      const testUrl = 'https://old-boat-9019.zongweihai199.workers.dev/' + id + exts[i];
-      if(current.indexOf(exts[i]) > 0) continue;
-      img.src = testUrl;
-      return;
-    }
-    // 全部失败，隐藏图片显示emoji
     img.style.display = 'none';
     if(img.nextElementSibling && img.nextElementSibling.tagName === 'SPAN') {
       img.nextElementSibling.style.display = 'flex';
