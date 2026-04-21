@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Sistema di Ordinazione Rapido</title>
+<!-- html5-qrcode for camera barcode scanning -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   /* ===== 全局重置 ===== */
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -721,12 +723,27 @@
     </div>
     <div class="page-body" style="padding:16px;display:flex;flex-direction:column;gap:14px;">
 
+      <!-- 摄像头预览区 -->
+      <div style="background:var(--white);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <span style="font-size:13px;color:var(--text-2);">📷 Scansione con Fotocamera</span>
+          <button id="scan-cam-btn" onclick="App.toggleCamera()"
+            style="padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
+            Avvia Camera
+          </button>
+        </div>
+        <div id="scan-reader" style="width:100%;aspect-ratio:4/3;background:#000;border-radius:8px;overflow:hidden;display:none;"></div>
+        <div id="scan-placeholder" style="width:100%;aspect-ratio:4/3;background:linear-gradient(135deg,#f5f5f5 0%,#e8e8e8 100%);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:13px;">
+          Tocca "Avvia Camera" per scansionare
+        </div>
+      </div>
+
       <!-- 输入区 -->
       <div style="background:var(--white);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-        <div style="font-size:13px;color:var(--text-2);margin-bottom:10px;">📷 Punta il lettore di codici a barre o inserisci manualmente il codice prodotto:</div>
+        <div style="font-size:13px;color:var(--text-2);margin-bottom:10px;">🔢 Oppure inserisci manualmente il codice prodotto:</div>
         <div style="display:flex;gap:8px;align-items:center;">
           <input type="text" id="scan-input"
-            placeholder="Scansiona o inserisci codice a barre…"
+            placeholder="Inserisci codice a barre…"
             style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:16px;color:var(--text);outline:none;background:#fafafa;"
             onfocus="this.style.borderColor='var(--primary)'"
             onblur="this.style.borderColor='var(--border)'"
@@ -736,7 +753,7 @@
             Aggiungi
           </button>
         </div>
-        <div style="font-size:11px;color:var(--text-3);margin-top:8px;">Lo scanner aggiunge automaticamente, non è necessario cliccare il pulsante</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:8px;">Oppure usa il lettore di codici a barre esterno</div>
       </div>
 
       <!-- Registro Scansioni -->
@@ -745,7 +762,7 @@
           <span style="font-size:14px;font-weight:600;color:var(--text);">Registro Scansioni</span>
           <span onclick="App.scanClearLog()" style="font-size:12px;color:var(--text-3);cursor:pointer;">Cancella Registro</span>
         </div>
-        <div id="scan-log" style="display:flex;flex-direction:column;gap:8px;">
+        <div id="scan-log" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;">
           <div style="text-align:center;color:var(--text-3);font-size:13px;padding:20px 0;">Nessun registro, inizia a scansionare～</div>
         </div>
       </div>
@@ -5764,6 +5781,10 @@ const B2_IMG_MAP = {
     } else {
       stopOrderAutoRefresh();
     }
+    // 离开扫描页时停止摄像头
+    if(pageId !== 'page-scan' && _camRunning){
+      stopCamera();
+    }
     // 同步 history，让手机系统后退键能触发 popstate
     if(pushStack){
       history.pushState({ page: pageId }, '', '');
@@ -6034,6 +6055,101 @@ function buyNow() {
       showToast('✅ ' + name + ' aggiunto al Carrello');
     } else {
       showToast('⚠️ Codice ' + code + ' non nel database prodotti, aggiunto al carrello');
+    }
+  }
+
+  // ==================== 摄像头扫码 ====================
+  var _html5Qr = null;
+  var _camRunning = false;
+
+  function toggleCamera(){
+    if(_camRunning){
+      stopCamera();
+    } else {
+      startCamera();
+    }
+  }
+
+  function startCamera(){
+    const reader = $('scan-reader');
+    const placeholder = $('scan-placeholder');
+    const btn = $('scan-cam-btn');
+    if(!reader || !placeholder || !btn) return;
+
+    _html5Qr = new Html5Qrcode("scan-reader");
+    _html5Qr.start(
+      { facingMode: "environment" },  // 后置摄像头
+      {
+        fps: 10,
+        qrbox: { width: 280, height: 150 },
+        aspectRatio: 4/3
+      },
+      function(decodedText){
+        // 扫码成功
+        _html5Qr.pause(true);  // 暂停扫描，避免重复触发
+        handleScannedCode(decodedText);
+        // 延迟恢复扫描
+        setTimeout(function(){
+          if(_camRunning) _html5Qr.resume();
+        }, 1500);
+      },
+      function(error){
+        // 扫描中...忽略错误
+      }
+    ).then(function(){
+      _camRunning = true;
+      reader.style.display = 'block';
+      placeholder.style.display = 'none';
+      btn.textContent = 'Ferma Camera';
+      btn.style.background = '#666';
+    }).catch(function(err){
+      console.error('Camera error:', err);
+      showToast('Impossibile avviare la fotocamera');
+    });
+  }
+
+  function stopCamera(){
+    if(_html5Qr){
+      _html5Qr.stop().then(function(){
+        _camRunning = false;
+        const reader = $('scan-reader');
+        const placeholder = $('scan-placeholder');
+        const btn = $('scan-cam-btn');
+        if(reader) reader.style.display = 'none';
+        if(placeholder) placeholder.style.display = 'flex';
+        if(btn){ btn.textContent = 'Avvia Camera'; btn.style.background = 'var(--primary)'; }
+      }).catch(function(err){
+        console.error('Stop camera error:', err);
+      });
+    }
+  }
+
+  function handleScannedCode(code){
+    // 复用 scanAdd 的逻辑，但不清空输入框
+    const g = GOODS_DATA.find(function(x){ return String(x.id).toLowerCase() === code.toLowerCase(); });
+    const goodId = g ? String(g.id) : code;
+    const name   = g ? g.name  : 'Prodotto Sconosciuto';
+    const spec   = g ? ((g.specs && g.specs[0]) ? g.specs[0] : (g.spec||'')) : '';
+    const key    = cartKey(goodId, spec);
+
+    const existing = state.cartItems.find(function(i){ return i.key === key; });
+    if(existing){
+      existing.qty += 1;
+    } else {
+      state.cartItems.push({ key: key, goodId: goodId, spec: spec, qty: 1, checked: true });
+    }
+    save();
+    updateCartBadge();
+
+    // 记录到日志
+    const found = !!g;
+    _scanLog.unshift({ code: goodId, name: name, spec: spec, found: found, time: new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) });
+    renderScanLog();
+
+    if(found){
+      showToast('✅ ' + name + ' aggiunto al Carrello');
+    } else {
+      showToast('⚠️ Codice ' + code + ' non nel database');
     }
   }
 
@@ -7026,7 +7142,7 @@ function buyNow() {
     openDetail,selectSpec,changeQty,
     onSearchInput,onSearchFocus,clearSearch,
     toggleCatSearch,onCatSearchInput,clearCatSearch,
-    scanAdd,scanClearLog,
+    scanAdd,scanClearLog,toggleCamera,
     addToCart,quickAddCart,buyNow,
     clearCart,renderCart,toggleCartCheck,toggleCheckAll,changeCartQty,removeCartItem,
     goCheckout,submitOrder,
