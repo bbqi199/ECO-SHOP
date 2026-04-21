@@ -6061,6 +6061,7 @@ function buyNow() {
   // ==================== 摄像头扫码 ====================
   var _html5Qr = null;
   var _camRunning = false;
+  var _html5Qr = null;
 
   function toggleCamera(){
     if(_camRunning){
@@ -6076,75 +6077,46 @@ function buyNow() {
     const btn = $('scan-cam-btn');
     if(!reader || !placeholder || !btn) return;
 
-    // 先检查摄像头权限
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(function(stream){
-        // 有权限，停止测试流
-        stream.getTracks().forEach(t => t.stop());
-        // 开始扫码
-        _startQrScanner();
-      })
-      .catch(function(err){
-        console.error('Permission denied:', err);
-        showToast('Permesso fotocamera negato');
-      });
-  }
-
-  function _startQrScanner(){
-    const reader = $('scan-reader');
-    const placeholder = $('scan-placeholder');
-    const btn = $('scan-cam-btn');
-
     _html5Qr = new Html5Qrcode("scan-reader");
 
-    // 先尝试后置摄像头
-    var config = {
-      fps: 10,
-      qrbox: { width: 280, height: 150 },
-      aspectRatio: 1.777778
-    };
+    Html5Qrcode.getCameras().then(function(cameras){
+      if(cameras && cameras.length){
+        // 优先选择后置摄像头
+        var cameraId = cameras[0].id;
+        for(var i=0; i<cameras.length; i++){
+          if(cameras[i].label && cameras[i].label.toLowerCase().includes('back')){
+            cameraId = cameras[i].id;
+            break;
+          }
+        }
 
-    _html5Qr.start(
-      { facingMode: { exact: "environment" } },
-      config,
-      function(decodedText){
-        _html5Qr.pause(true);
-        handleScannedCode(decodedText);
-        setTimeout(function(){
-          if(_camRunning) _html5Qr.resume();
-        }, 1500);
-      },
-      function(error){}
-    ).then(function(){
-      _camRunning = true;
-      reader.style.display = 'block';
-      placeholder.style.display = 'none';
-      btn.textContent = 'Ferma Camera';
-      btn.style.background = '#666';
+        _html5Qr.start(
+          cameraId,
+          { fps: 10, qrbox: 250 },
+          function(decodedText){
+            _html5Qr.pause(true);
+            handleScannedCode(decodedText);
+            setTimeout(function(){
+              if(_camRunning) _html5Qr.resume();
+            }, 1500);
+          },
+          function(error){}
+        ).then(function(){
+          _camRunning = true;
+          reader.style.display = 'block';
+          placeholder.style.display = 'none';
+          btn.textContent = 'Ferma Camera';
+          btn.style.background = '#666';
+        }).catch(function(err){
+          console.error('Camera start failed:', err);
+          showToast('Impossibile avviare la fotocamera');
+        });
+      } else {
+        showToast('Nessuna fotocamera trovata');
+      }
     }).catch(function(err){
-      console.warn('Back camera failed, trying front:', err);
-      // 后置摄像头失败，尝试前置
-      _html5Qr.start(
-        { facingMode: "user" },
-        config,
-        function(decodedText){
-          _html5Qr.pause(true);
-          handleScannedCode(decodedText);
-          setTimeout(function(){
-            if(_camRunning) _html5Qr.resume();
-          }, 1500);
-        },
-        function(error){}
-      ).then(function(){
-        _camRunning = true;
-        reader.style.display = 'block';
-        placeholder.style.display = 'none';
-        btn.textContent = 'Ferma Camera (Front)';
-        btn.style.background = '#666';
-      }).catch(function(err2){
-        console.error('Front camera also failed:', err2);
-        showToast('Fotocamera non disponibile');
-      });
+      console.error('Get cameras failed:', err);
+      showToast('Permesso fotocamera negato');
     });
   }
 
