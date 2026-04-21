@@ -6079,27 +6079,8 @@ function buyNow() {
 
     _html5Qr = new Html5Qrcode("scan-reader");
 
-    // 先请求摄像头权限（单独请求，更清晰）
-    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-      .then(function(stream){
-        // 权限获取成功，停止测试流
-        stream.getTracks().forEach(function(t){ t.stop(); });
-        // 然后开始扫码
-        _startQrScanner();
-      })
-      .catch(function(err){
-        console.error('Permission denied:', err);
-        showToast('Permesso fotocamera negato. Controlla le impostazioni del browser.');
-      });
-  }
-
-  function _startQrScanner(){
-    const reader = $('scan-reader');
-    const placeholder = $('scan-placeholder');
-    const btn = $('scan-cam-btn');
-
-    // 支持的条码格式（包含常见商品条形码）
-    var formatsToSupport = [
+    // 支持的条码格式
+    _html5Qr.setSupportedFormats([
       Html5QrcodeSupportedFormats.EAN_13,
       Html5QrcodeSupportedFormats.EAN_8,
       Html5QrcodeSupportedFormats.UPC_A,
@@ -6110,9 +6091,7 @@ function buyNow() {
       Html5QrcodeSupportedFormats.CODABAR,
       Html5QrcodeSupportedFormats.ITF,
       Html5QrcodeSupportedFormats.QR_CODE
-    ];
-
-    _html5Qr.setSupportedFormats(formatsToSupport);
+    ]);
 
     _html5Qr.start(
       { facingMode: "environment" },
@@ -6132,8 +6111,8 @@ function buyNow() {
       btn.textContent = 'Ferma Camera';
       btn.style.background = '#666';
     }).catch(function(err){
-      console.error('Camera start failed:', err);
-      showToast('Errore avvio fotocamera');
+      console.error('Camera error:', err);
+      showToast('Errore: ' + err.message);
     });
   }
 
