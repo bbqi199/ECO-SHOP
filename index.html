@@ -6114,6 +6114,20 @@ function buyNow() {
         // 震动反馈
         if(navigator.vibrate) navigator.vibrate(100);
 
+        // 短促嘀声
+        try{
+          var ctx = new (window.AudioContext || window.webkitAudioContext)();
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 1200;
+          osc.type = 'sine';
+          gain.gain.value = 0.3;
+          osc.start();
+          osc.stop(ctx.currentTime + 0.1);
+        }catch(e){}
+
         _html5Qr.pause(true);
         handleScannedCode(decodedText);
         setTimeout(function(){
