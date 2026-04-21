@@ -6174,6 +6174,7 @@ function buyNow() {
     const name   = g ? g.name  : 'Prodotto Sconosciuto';
     const spec   = g ? ((g.specs && g.specs[0]) ? g.specs[0] : (g.spec||'')) : '';
     const key    = cartKey(goodId, spec);
+    console.log('[扫码]', code, '找到:', !!g, 'key:', key);
 
     const existing = state.cartItems.find(function(i){ return i.key === key; });
     if(existing){
@@ -6183,6 +6184,7 @@ function buyNow() {
     }
     save();
     updateCartBadge();
+    console.log('[购物车]', state.cartItems.length, '项');
 
     // 记录到日志
     const found = !!g;
