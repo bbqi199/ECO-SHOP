@@ -6253,17 +6253,19 @@ function buyNow() {
     el.innerHTML=`
       <div class="cart-list">${state.cartItems.map((item,idx)=>{
         const g=GOODS_DATA.find(x=>String(x.id)===String(item.goodId));
-        if(!g) return '';
+        // 未知条码：创建虚拟商品对象
+        const displayG = g || { id: item.goodId, name: '⚠️ ' + item.goodId, price: 0, specs: item.spec ? [item.spec] : [] };
         const specQty = getSpecQty(item.spec, item.goodId);  // SpecificheQuantità
         const actualQty = item.qty * specQty;  // 实际商品Quantità
+        const imgHtml = g ? goodsImgHtml(g,'cart-img') : '<div class="cart-img" style="width:56px;height:56px;background:#f0f0f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;">📷</div>';
         return `<div class="cart-item">
           <div class="cart-check ${item.checked?'checked':''}" onclick="App.toggleCartCheck(${idx})">${item.checked?'✓':''}</div>
-          ${goodsImgHtml(g,'cart-img')}
+          ${imgHtml}
           <div class="cart-info">
-            <div class="cart-name">${g.name}</div>
-            <div class="cart-spec-text">${item.spec}</div>
+            <div class="cart-name">${displayG.name}</div>
+            <div class="cart-spec-text">${item.spec || 'Codice sconosciuto'}</div>
             <div class="cart-row">
-              <div class="cart-price">${formatPrice(g.price*actualQty)}</div>
+              <div class="cart-price">${formatPrice(displayG.price*actualQty)}</div>
               <div class="cart-stepper">
                 <button class="cart-btn minus" onclick="App.changeCartQty(${idx},-1)">−</button>
                 <div class="cart-num">${item.qty} ct × ${specQty} = ${actualQty}</div>
