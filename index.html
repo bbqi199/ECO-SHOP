@@ -1082,8 +1082,7 @@ const App = (function(){
         + '</div>'
         + '<div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'
         + '<div style="font-size:15px;font-weight:700;color:var(--primary);">' + formatPrice(g.price) + '<span style="font-size:11px;font-weight:400;color:var(--text-3);">/' + g.unit + '</span></div>'
-        + '<button onclick="event.stopPropagation();App.quickAddCart(\'' + g.id + '\')"'
-        + ' style="background:var(--primary);color:#fff;border:none;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;letter-spacing:0.5px;">🛒 Aggiungi</button>'
+        + _sp(g.id)
         + '</div>'
         + '</div>';
     });
@@ -1156,8 +1155,7 @@ const App = (function(){
         + '</div>'
         + '<div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'
         + '<div style="font-size:15px;font-weight:700;color:var(--primary);">' + formatPrice(g.price) + '<span style="font-size:11px;font-weight:400;color:var(--text-3);">/' + g.unit + '</span></div>'
-        + '<button onclick="event.stopPropagation();App.quickAddCart(\'' + g.id + '\')"'
-        + ' style="background:var(--primary);color:#fff;border:none;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;letter-spacing:0.5px;">🛒 Aggiungi</button>'
+        + _sp(g.id)
         + '</div>'
         + '</div>';
     });
@@ -7194,3 +7192,4 @@ if(!IS_LOCAL_HOST){
 <!-- 更新时间: 2026-04-07 01:37:25 -->
 <!-- 更新时间: 2026-04-07 02:14:31 -->
 <!-- 更新时间: 2026-04-18 13:24:25 -->
+<!-- 更新时间: 2026-04-21 22:50:52 -->
