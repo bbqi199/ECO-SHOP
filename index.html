@@ -6093,26 +6093,45 @@ function buyNow() {
       Html5QrcodeSupportedFormats.QR_CODE
     ]);
 
-    _html5Qr.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      function(decodedText){
-        _html5Qr.pause(true);
-        handleScannedCode(decodedText);
-        setTimeout(function(){
-          if(_camRunning) _html5Qr.resume();
-        }, 1500);
-      },
-      function(error){}
-    ).then(function(){
-      _camRunning = true;
-      reader.style.display = 'block';
-      placeholder.style.display = 'none';
-      btn.textContent = 'Ferma Camera';
-      btn.style.background = '#666';
+    // 先获取摄像头列表
+    Html5Qrcode.getCameras().then(function(cameras){
+      if(cameras && cameras.length){
+        var cameraId = cameras[0].id;
+        // 尝试找后置摄像头
+        for(var i=0; i<cameras.length; i++){
+          if(cameras[i].label && cameras[i].label.toLowerCase().indexOf('back') !== -1){
+            cameraId = cameras[i].id;
+            break;
+          }
+        }
+
+        _html5Qr.start(
+          cameraId,
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          function(decodedText){
+            _html5Qr.pause(true);
+            handleScannedCode(decodedText);
+            setTimeout(function(){
+              if(_camRunning) _html5Qr.resume();
+            }, 1500);
+          },
+          function(error){}
+        ).then(function(){
+          _camRunning = true;
+          reader.style.display = 'block';
+          placeholder.style.display = 'none';
+          btn.textContent = 'Ferma Camera';
+          btn.style.background = '#666';
+        }).catch(function(err){
+          console.error('Camera start error:', err);
+          showToast('Errore avvio camera');
+        });
+      } else {
+        showToast('Nessuna fotocamera trovata');
+      }
     }).catch(function(err){
-      console.error('Camera error:', err);
-      showToast('Errore: ' + err.message);
+      console.error('Get cameras error:', err);
+      showToast('Errore accesso fotocamera');
     });
   }
 
