@@ -727,13 +727,12 @@
       <div style="background:var(--white);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <span style="font-size:13px;color:var(--text-2);">📷 Scansione con Fotocamera</span>
-          <button id="scan-cam-btn" onclick="App.toggleCamera()"
+          <button id="scan-cam-btn" onclick="alert('按钮点击成功!');App.toggleCamera()"
             style="padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
             Avvia Camera
           </button>
         </div>
         <div id="scan-reader" style="width:100%;aspect-ratio:4/3;background:#000;border-radius:8px;overflow:hidden;display:none;"></div>
-        <style>#scan-reader video{min-width:100%;min-height:100%;object-fit:cover;}</style>
         <div id="scan-placeholder" style="width:100%;aspect-ratio:4/3;background:linear-gradient(135deg,#f5f5f5 0%,#e8e8e8 100%);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:13px;">
           Tocca "Avvia Camera" per scansionare
         </div>
@@ -6062,7 +6061,6 @@ function buyNow() {
   // ==================== 摄像头扫码 ====================
   var _html5Qr = null;
   var _camRunning = false;
-  var _html5Qr = null;
 
   function toggleCamera(){
     if(_camRunning){
@@ -6080,59 +6078,43 @@ function buyNow() {
 
     _html5Qr = new Html5Qrcode("scan-reader");
 
-    // 支持的条码格式
-    _html5Qr.setSupportedFormats([
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.CODE_93,
-      Html5QrcodeSupportedFormats.CODABAR,
-      Html5QrcodeSupportedFormats.ITF,
-      Html5QrcodeSupportedFormats.QR_CODE
-    ]);
+    const config = {
+      fps: 10,
+      qrbox: { width: 250, height: 250 },
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.CODE_93,
+        Html5QrcodeSupportedFormats.CODABAR,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.QR_CODE
+      ]
+    };
 
-    // 先获取摄像头列表
-    Html5Qrcode.getCameras().then(function(cameras){
-      if(cameras && cameras.length){
-        var cameraId = cameras[0].id;
-        // 尝试找后置摄像头
-        for(var i=0; i<cameras.length; i++){
-          if(cameras[i].label && cameras[i].label.toLowerCase().indexOf('back') !== -1){
-            cameraId = cameras[i].id;
-            break;
-          }
-        }
-
-        _html5Qr.start(
-          cameraId,
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          function(decodedText){
-            _html5Qr.pause(true);
-            handleScannedCode(decodedText);
-            setTimeout(function(){
-              if(_camRunning) _html5Qr.resume();
-            }, 1500);
-          },
-          function(error){}
-        ).then(function(){
-          _camRunning = true;
-          reader.style.display = 'block';
-          placeholder.style.display = 'none';
-          btn.textContent = 'Ferma Camera';
-          btn.style.background = '#666';
-        }).catch(function(err){
-          console.error('Camera start error:', err);
-          showToast('Errore avvio camera');
-        });
-      } else {
-        showToast('Nessuna fotocamera trovata');
-      }
+    _html5Qr.start(
+      { facingMode: "environment" },
+      config,
+      function(decodedText){
+        _html5Qr.pause(true);
+        handleScannedCode(decodedText);
+        setTimeout(function(){
+          if(_camRunning) _html5Qr.resume();
+        }, 1500);
+      },
+      function(error){}
+    ).then(function(){
+      _camRunning = true;
+      reader.style.display = 'block';
+      placeholder.style.display = 'none';
+      btn.textContent = 'Ferma Camera';
+      btn.style.background = '#666';
     }).catch(function(err){
-      console.error('Get cameras error:', err);
-      showToast('Errore accesso fotocamera');
+      console.error('Camera start error:', err);
+      showToast('Errore avvio camera');
     });
   }
 
