@@ -6098,6 +6098,24 @@ function buyNow() {
     const placeholder = $('scan-placeholder');
     const btn = $('scan-cam-btn');
 
+    // 支持的条码格式（包含常见商品条形码）
+    var formatsToSupport = [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.CODE_93,
+      Html5QrcodeSupportedFormats.CODABAR,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.DATA_MATRIX,
+      Html5QrcodeSupportedFormats.PDF_417
+    ];
+
+    _html5Qr.setSupportedFormats(formatsToSupport);
+
     Html5Qrcode.getCameras().then(function(cameras){
       if(cameras && cameras.length){
         // 优先选择后置摄像头
@@ -6111,7 +6129,7 @@ function buyNow() {
 
         _html5Qr.start(
           cameraId,
-          { fps: 10, qrbox: 250 },
+          { fps: 10, qrbox: { width: 300, height: 150 } },
           function(decodedText){
             _html5Qr.pause(true);
             handleScannedCode(decodedText);
