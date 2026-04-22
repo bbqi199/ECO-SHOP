@@ -6141,13 +6141,15 @@ function buyNow() {
       placeholder.style.display = 'none';
       btn.textContent = 'Ferma Camera';
       btn.style.background = '#666';
-      // 手动设置video元素样式
+      // 手动设置video元素样式，放大画面
       setTimeout(function(){
         var video = reader.querySelector('video');
         if(video){
           video.style.width = '100%';
           video.style.height = '100%';
-          video.style.objectFit = 'contain';
+          video.style.objectFit = 'cover';
+          video.style.transform = 'scale(1.8)';
+          video.style.transformOrigin = 'center center';
           video.style.display = 'block';
         }
       }, 100);
