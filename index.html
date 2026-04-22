@@ -466,7 +466,7 @@
     <div class="page-body" id="home-body">
       <!-- Banner -->
       <div class="banner-wrap">
-        <div class="banner">
+        <div class="banner" id="home-banner">
           <h2>ECO SHOP</h2>
           <p>🔥 SCOPRI OLTRE 4.500 ARTICOLI! 🔥
 💥 SUPER PROMO IMPERDIBILE 💥
@@ -475,6 +475,7 @@
 ⚡ Più compri, più risparmi!
 🚀 Non perdere questa occasione!
 👉 Ordina subito dal nostro sito e approfitta degli sconti esclusivi!</p>
+          <div id="banner-discount-tag" style="display:none;margin-top:8px;"></div>
           <div class="banner-emoji">🛍️</div>
         </div>
       </div>
@@ -681,6 +682,31 @@
         <div class="profile-stat"><div class="profile-stat-num" id="stat-processing">0</div><div class="profile-stat-label">In preparazione</div></div>
         <div class="profile-stat"><div class="profile-stat-num" id="stat-done">0</div><div class="profile-stat-label">Completati</div></div>
       </div>
+
+      <!-- 客户价格等级卡片 -->
+      <div id="profile-price-card" style="display:none;margin:12px 12px 0;background:linear-gradient(135deg,#FF5A1F,#ff8c42);border-radius:12px;padding:14px 16px;color:#fff;box-shadow:0 4px 16px rgba(255,90,31,0.3);">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:12px;opacity:0.85;margin-bottom:3px;">Livello Prezzi</div>
+            <div style="font-size:22px;font-weight:800;" id="profile-price-level">–</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:12px;opacity:0.85;margin-bottom:3px;">Sconto Applicato</div>
+            <div style="font-size:22px;font-weight:800;" id="profile-discount">0%</div>
+          </div>
+          <div style="font-size:36px;opacity:0.3;">🏷️</div>
+        </div>
+      </div>
+
+      <!-- 客户业务信息卡片 -->
+      <div id="profile-biz-card" style="display:none;margin:12px 12px 0;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.07);">
+        <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:16px;">🏢</span>
+          <span style="font-size:14px;font-weight:600;color:#1a1a1a;">Dati Aziendali</span>
+        </div>
+        <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;" id="profile-biz-rows"></div>
+      </div>
+
       <div style="height:16px;"></div>
       <div class="profile-section">
         <div class="profile-menu-item" onclick="App.showPage('page-address')">
@@ -697,6 +723,9 @@
         </div>
         <div class="profile-menu-item" onclick="App.showToast('Funzione in sviluppo…')">
           <span class="menu-icon">⚙️</span><span class="menu-label">Impostazioni</span><span class="menu-arrow">›</span>
+        </div>
+        <div class="profile-menu-item" onclick="App.doLogout()">
+          <span class="menu-icon">🚪</span><span class="menu-label">Esci (Logout)</span><span class="menu-arrow">›</span>
         </div>
         <div class="profile-menu-item" onclick="App.clearAllData()" style="color:#e53e3e;">
           <span class="menu-icon">🗑️</span><span class="menu-label" style="color:#e53e3e;">Cancella Tutti i Dati</span><span class="menu-arrow" style="color:#e53e3e;">›</span>
@@ -995,7 +1024,15 @@ const App = (function(){
     setTimeout(()=>t.classList.remove('show'),1800);
   }
   function $(id){ return document.getElementById(id); }
-  function formatPrice(n){ return '€'+n.toFixed(2); }
+  function formatPrice(n){
+    // 应用客户折扣（折扣 = discount%，如 20 = 打8折）
+    var p = n;
+    if(window.CURRENT_USER && window.CURRENT_USER.discount > 0 && window.CURRENT_USER.discount < 100){
+      p = n * (1 - window.CURRENT_USER.discount / 100);
+    }
+    return '€' + p.toFixed(2);
+  }
+  function formatBasePrice(n){ return '€' + n.toFixed(2); } // 原始价格（不打折）
 
   // ==================== 搜索功能 ====================
   let _searchTimer = null;
@@ -6351,15 +6388,50 @@ function buyNow() {
   function renderCheckout(items){
     const body=$('checkout-body');
     const defaultAddr = state.addresses.find(a=>a.isDefault) || state.addresses[0];
-    const subtotal=items.reduce((s,i)=>{
+    const cu = window.CURRENT_USER;
+    const subtotalBase=items.reduce((s,i)=>{
       const g=GOODS_DATA.find(x=>String(x.id)===String(i.goodId));
       const specQty = getSpecQty(i.spec, i.goodId);
       const actualQty = i.qty * specQty;
       return s+(g?g.price*actualQty:0);
     },0);
+    const discountRate = (cu && cu.discount > 0 && cu.discount < 100) ? parseFloat(cu.discount) : 0;
+    const subtotal = subtotalBase * (1 - discountRate / 100);
     const freight = 0;
     const total=subtotal+freight;
+
+    // 客户业务信息区块
+    let customerInfoHtml = '';
+    if(cu && (cu.nome || cu.indirizzo || cu.piva)){
+      const rows = [];
+      if(cu.nome)          rows.push(`<div style="display:flex;gap:8px;"><span style="width:100px;font-size:12px;color:#999;flex-shrink:0;">Ragione Sociale</span><span style="font-size:13px;color:#1a1a1a;">${cu.nome}</span></div>`);
+      if(cu.indirizzo)     rows.push(`<div style="display:flex;gap:8px;"><span style="width:100px;font-size:12px;color:#999;flex-shrink:0;">Indirizzo</span><span style="font-size:13px;color:#1a1a1a;">${cu.indirizzo}</span></div>`);
+      if(cu.piva)          rows.push(`<div style="display:flex;gap:8px;"><span style="width:100px;font-size:12px;color:#999;flex-shrink:0;">P.IVA</span><span style="font-size:13px;color:#1a1a1a;">${cu.piva}</span></div>`);
+      if(cu.cod)           rows.push(`<div style="display:flex;gap:8px;"><span style="width:100px;font-size:12px;color:#999;flex-shrink:0;">COD.</span><span style="font-size:13px;color:#1a1a1a;">${cu.cod}</span></div>`);
+      if(cu.codiceFiscale) rows.push(`<div style="display:flex;gap:8px;"><span style="width:100px;font-size:12px;color:#999;flex-shrink:0;">Cod. Fiscale</span><span style="font-size:13px;color:#1a1a1a;">${cu.codiceFiscale}</span></div>`);
+      if(cu.email)         rows.push(`<div style="display:flex;gap:8px;"><span style="width:100px;font-size:12px;color:#999;flex-shrink:0;">Email</span><span style="font-size:13px;color:#1a1a1a;">${cu.email}</span></div>`);
+      if(cu.telefono)      rows.push(`<div style="display:flex;gap:8px;"><span style="width:100px;font-size:12px;color:#999;flex-shrink:0;">Telefono</span><span style="font-size:13px;color:#1a1a1a;">${cu.telefono}</span></div>`);
+      if(rows.length > 0){
+        customerInfoHtml = `
+          <div class="checkout-section" style="margin:8px;border-radius:12px;overflow:hidden;">
+            <div class="checkout-section-header"><span class="icon">🏢</span><span class="label">Dati Cliente</span></div>
+            <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;">${rows.join('')}</div>
+          </div>`;
+      }
+    }
+
+    let discountRowHtml = '';
+    if(discountRate > 0){
+      const saved = subtotalBase - subtotal;
+      discountRowHtml = `
+        <div class="summary-row" style="background:#f0fff4;border-radius:8px;padding:6px 10px;margin:2px 0;">
+          <span class="summary-label" style="color:var(--green);font-weight:600;">🏷️ Sconto Livello ${cu.priceLevel} (-${discountRate}%)</span>
+          <span class="summary-value" style="color:var(--green);font-weight:600;">-€${saved.toFixed(2)}</span>
+        </div>`;
+    }
+
     body.innerHTML=`
+      ${customerInfoHtml}
       <div class="checkout-section" style="margin:8px;border-radius:12px;overflow:hidden;">
         <div class="checkout-section-header"><span class="icon">📍</span><span class="label">Indirizzo di Spedizione</span></div>
         ${defaultAddr?`<div class="address-card" onclick="App.showPage('page-address')">
@@ -6372,9 +6444,10 @@ function buyNow() {
         <div class="checkout-goods">${items.map(item=>{
           const g=GOODS_DATA.find(x=>String(x.id)===String(item.goodId));
           if(!g) return '';
-          const specQty = getSpecQty(item.spec, item.goodId);  // SpecificheQuantità
-          const actualQty = item.qty * specQty;  // 实际商品Quantità
-          const itemTotal = g.price * actualQty;  // 该商品总价
+          const specQty = getSpecQty(item.spec, item.goodId);
+          const actualQty = item.qty * specQty;
+          const itemTotalBase = g.price * actualQty;
+          const itemTotal = itemTotalBase * (1 - discountRate / 100);
           return `<div class="checkout-goods-item">
             ${goodsImgHtml(g,'checkout-goods-img')}
             <div class="checkout-goods-info">
@@ -6382,7 +6455,7 @@ function buyNow() {
               <div class="checkout-goods-spec">${item.spec}</div>
             </div>
             <div class="checkout-goods-right">
-              <div class="checkout-goods-price">${formatPrice(itemTotal)}</div>
+              <div class="checkout-goods-price">€${itemTotal.toFixed(2)}</div>
               <div class="checkout-goods-qty">×${item.qty} cartoni (${actualQty})</div>
             </div>
           </div>`;
@@ -6395,17 +6468,19 @@ function buyNow() {
       <div class="checkout-section" style="margin:8px;border-radius:12px;overflow:hidden;">
         <div class="checkout-section-header"><span class="icon">💰</span><span class="label">Dettaglio Costi</span></div>
         <div class="checkout-summary">
-          <div class="summary-row"><span class="summary-label">Subtotale Prodotti</span><span class="summary-value">${formatPrice(subtotal)}</span></div>
+          ${discountRate > 0 ? `<div class="summary-row"><span class="summary-label">Prezzo Originale</span><span class="summary-value" style="text-decoration:line-through;color:#999;">€${subtotalBase.toFixed(2)}</span></div>` : ''}
+          ${discountRowHtml}
+          <div class="summary-row"><span class="summary-label">Subtotale Prodotti</span><span class="summary-value">€${subtotal.toFixed(2)}</span></div>
           <div class="summary-row"><span class="summary-label">Spedizione</span><span class="summary-value">${freight===0?'<span style="color:var(--green)">Spedizione Gratuita</span>':formatPrice(freight)}</span></div>
           ${freight>0?`<div class="summary-row"><span class="summary-label" style="font-size:12px;color:var(--text-3)">Spedizione gratuita per ordini superiori a €200</span><span></span></div>`:''}
-          <div class="summary-row summary-total"><span class="summary-label">Totale da Pagare</span><span class="summary-value">${formatPrice(total)}</span></div>
+          <div class="summary-row summary-total"><span class="summary-label">Totale da Pagare</span><span class="summary-value">€${total.toFixed(2)}</span></div>
         </div>
       </div>
       <div style="height:80px;"></div>
     `;
     $('checkout-footer').innerHTML=`
       <div class="checkout-footer">
-        <div class="checkout-total-display">Totale: <strong>${formatPrice(total)}</strong></div>
+        <div class="checkout-total-display">Totale: <strong>€${total.toFixed(2)}</strong></div>
         <button class="checkout-pay-btn" onclick="App.submitOrder()">Invia Ordine</button>
       </div>
     `;
@@ -6744,13 +6819,89 @@ function buyNow() {
   }
 
   // ---------- 人中心 ----------
+  function updateHomeBanner(){
+    var cu = window.CURRENT_USER;
+    var tagEl = document.getElementById('banner-discount-tag');
+    if(!tagEl) return;
+    if(cu && cu.discount > 0 && cu.discount < 100){
+      tagEl.style.display = 'block';
+      tagEl.innerHTML = '<span style="display:inline-block;background:rgba(255,255,255,0.25);border-radius:4px;padding:3px 10px;font-size:12px;font-weight:600;">'
+        + '🏷️ Livello ' + (cu.priceLevel||'') + ' · Sconto ' + cu.discount + '% su tutti i prodotti'
+        + '</span>';
+      if(cu.nome){
+        var banner = document.getElementById('home-banner');
+        if(banner){
+          var h2 = banner.querySelector('h2');
+          if(h2) h2.textContent = 'Ciao, ' + cu.nome + '!';
+        }
+      }
+    } else if(cu && cu.nome) {
+      var banner2 = document.getElementById('home-banner');
+      if(banner2){
+        var h2b = banner2.querySelector('h2');
+        if(h2b) h2b.textContent = 'Ciao, ' + cu.nome + '!';
+      }
+    }
+  }
+
   function renderProfile(){
-    $('profile-name').textContent = state.profile.name||'Nome non impostato';
-    $('profile-phone').textContent = state.profile.phone||'Telefono non associato';
+    // 基础信息
+    var cu = window.CURRENT_USER;
+    var displayName = (cu && cu.nome) ? cu.nome : (state.profile.name||'Nome non impostato');
+    var displayPhone = (cu && cu.telefono) ? cu.telefono : (state.profile.phone||'Telefono non associato');
+    $('profile-name').textContent = displayName;
+    $('profile-phone').textContent = displayPhone;
     $('stat-total').textContent = state.orders.length;
     $('stat-pending').textContent = state.orders.filter(o=>o.status==='pending').length;
     $('stat-processing').textContent = state.orders.filter(o=>o.status==='processing').length;
     $('stat-done').textContent = state.orders.filter(o=>o.status==='done').length;
+
+    // 价格等级卡片
+    var priceCard = $('profile-price-card');
+    var discountEl = $('profile-discount');
+    var levelEl = $('profile-price-level');
+    if(cu && priceCard){
+      priceCard.style.display = 'block';
+      if(levelEl) levelEl.textContent = cu.priceLevel || 'A';
+      if(discountEl){
+        var d = parseFloat(cu.discount) || 0;
+        discountEl.textContent = d > 0 ? '-' + d + '%' : 'Nessuno';
+      }
+    }
+
+    // 业务信息卡片
+    var bizCard = $('profile-biz-card');
+    var bizRows = $('profile-biz-rows');
+    if(cu && bizCard && bizRows){
+      var rows = [];
+      var bizFields = [
+        { label:'Ragione Sociale', val: cu.nome },
+        { label:'Indirizzo',       val: cu.indirizzo },
+        { label:'P.IVA',           val: cu.piva },
+        { label:'COD.',            val: cu.cod },
+        { label:'Cod. Fiscale',    val: cu.codiceFiscale },
+        { label:'Email',           val: cu.email },
+        { label:'Telefono',        val: cu.telefono }
+      ];
+      bizFields.forEach(function(f){
+        if(f.val){
+          rows.push('<div style="display:flex;gap:8px;align-items:flex-start;">'
+            + '<span style="width:110px;font-size:12px;color:#999;flex-shrink:0;padding-top:1px;">' + f.label + '</span>'
+            + '<span style="font-size:13px;color:#1a1a1a;flex:1;word-break:break-all;">' + f.val + '</span>'
+            + '</div>');
+        }
+      });
+      if(rows.length > 0){
+        bizCard.style.display = 'block';
+        bizRows.innerHTML = rows.join('');
+      }
+    }
+  }
+  function doLogout(){
+    if(!confirm('Confermi il logout?')) return;
+    sessionStorage.removeItem(SESSION_KEY);
+    window.CURRENT_USER = null;
+    location.reload();
   }
   function showEditProfile(){
     $('edit-name').value = state.profile.name||'';
@@ -6858,6 +7009,11 @@ function buyNow() {
   // ---------- 初始化 ----------
   function init(){
     load();
+    // 恢复登录用户信息（含价格等级、折扣）
+    try {
+      var stored = sessionStorage.getItem(window.SESSION_KEY || 'sc_login_user');
+      if(stored && !window.CURRENT_USER){ window.CURRENT_USER = JSON.parse(stored); }
+    } catch(e){}
     // 商品数据统一从 goods.json 加载，不再使用 localStorage 缓存覆盖
     // 预加载本地图片列表（用于导入时自动匹配）
     loadAvailableImages();
@@ -6865,6 +7021,8 @@ function buyNow() {
     renderCatList('cat-list', state.currentCat, 'App.switchCat');
     renderGoodsPanel('goods-panel', state.currentCat);
     updateCartBadge();
+    // 更新Banner显示客户折扣等级
+    updateHomeBanner();
     // 页面加载时检查一次订单状态变化（如果有新消息会弹窗通知）
     if(GSHEET_URL && state.orders.length > 0) {
       setTimeout(function() {
@@ -7201,7 +7359,7 @@ function buyNow() {
     clearCart,renderCart,toggleCartCheck,toggleCheckAll,changeCartQty,removeCartItem,
     goCheckout,submitOrder,
     renderOrders,switchOrderTab,cancelOrder,reorder,exportOrderExcel,refreshSheetOrders,
-    renderProfile,showEditProfile,saveProfile,clearAllData,
+    renderProfile,showEditProfile,saveProfile,clearAllData,doLogout,updateHomeBanner,
     showAddAddress,editAddress,saveAddress,deleteAddress,setDefaultAddr,renderAddress,
     closeModal,showToast,
     renderGoodsStats,handleFileDrop,handleFileSelect,confirmImport,exportGoods,
@@ -7212,17 +7370,48 @@ function buyNow() {
 
 // =====================================================
 // 登录验证（直接读取 Google Sheets Account表 CSV）
-// 表格结构：用户(A)、Password(B)、Nome(C)、状态(D)
+// 表格结构（13列）：
+//   用户(A) 密码(B) 姓名(C) 状态(D) Nome(E) Indirizzo(F)
+//   P.IVA(G) COD.(H) CODICE FISCALE(I) EMAIL(J) Telefono(K)
+//   priceLevel(L) discount(M)
 // =====================================================
 var LOGIN_SHEET_CSV = 'https://docs.google.com/spreadsheets/d/1dsebhgSvzq7ebVTBR_cN1aAhbynjqBiW_6wHr7I-s_M/gviz/tq?tqx=out:csv&gid=0';
 var SESSION_KEY = 'sc_login_user';
 var _cachedUsers = null;
 
+// ── 当前登录用户（含完整客户信息）──
+var CURRENT_USER = null;
+
+// ── 解析CSV行（正确处理带逗号的引号字段）──
+function parseCSVRow(row){
+  var result = [];
+  var inQuote = false;
+  var field = '';
+  for(var i = 0; i < row.length; i++){
+    var c = row[i];
+    if(c === '"'){
+      if(inQuote && row[i+1] === '"'){ field += '"'; i++; }
+      else { inQuote = !inQuote; }
+    } else if(c === ',' && !inQuote){
+      result.push(field); field = '';
+    } else {
+      field += c;
+    }
+  }
+  result.push(field);
+  return result;
+}
+
 // 本地测试：直接跳过登录验证
 var IS_LOCAL_HOST = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
 if(IS_LOCAL_HOST){
   console.log('本地模式：跳过登录验证');
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({username: 'local_test', name: 'Utente di Test Locale'}));
+  CURRENT_USER = {
+    username: 'local_test', name: 'Test Locale', status: 'active',
+    nome: 'Negozio Test', indirizzo: 'Via Test 1', piva: '', cod: '',
+    codiceFiscale: '', email: '', telefono: '', priceLevel: 'A', discount: 0
+  };
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(CURRENT_USER));
 }
 
 function loadUserSheet(callback){
@@ -7234,13 +7423,27 @@ function loadUserSheet(callback){
       var rows = xhr.responseText.split('\n');
       var users = [];
       for(var i = 1; i < rows.length; i++){
-        var cols = rows[i].split(',');
-        if(cols.length < 4) continue;
-        var u = cols[0].trim().replace(/^"|"$/g, '');
-        var p = cols[1].trim().replace(/^"|"$/g, '');
-        var n = cols[2].trim().replace(/^"|"$/g, '');
-        var s = cols[3].trim().replace(/^"|"$/g, '').toLowerCase();
-        if(u && p){ users.push({ user: u, pass: p, name: n, status: s }); }
+        var row = rows[i].trim();
+        if(!row) continue;
+        var cols = parseCSVRow(row);
+        var u = (cols[0]||'').trim();
+        var p = (cols[1]||'').trim();
+        if(!u || !p) continue;
+        users.push({
+          user:           u,
+          pass:           p,
+          name:           (cols[2]||'').trim(),
+          status:         (cols[3]||'').trim().toLowerCase(),
+          nome:           (cols[4]||'').trim(),
+          indirizzo:      (cols[5]||'').trim(),
+          piva:           (cols[6]||'').trim(),
+          cod:            (cols[7]||'').trim(),
+          codiceFiscale:  (cols[8]||'').trim(),
+          email:          (cols[9]||'').trim(),
+          telefono:       (cols[10]||'').trim(),
+          priceLevel:     (cols[11]||'').trim() || 'A',
+          discount:       parseFloat((cols[12]||'0').trim()) || 0
+        });
       }
       _cachedUsers = users;
       callback(users);
@@ -7254,9 +7457,33 @@ function loadUserSheet(callback){
   xhr.send();
 }
 
+// ── 从session恢复用户信息并应用折扣 ──
+function restoreCurrentUser(){
+  try {
+    var stored = sessionStorage.getItem(SESSION_KEY);
+    if(stored){ CURRENT_USER = JSON.parse(stored); }
+  } catch(e){}
+}
+
+// ── 计算折后价格（折扣为百分比，如20表示8折） ──
+function getDiscountedPrice(basePrice){
+  if(!CURRENT_USER || !CURRENT_USER.discount) return basePrice;
+  var d = parseFloat(CURRENT_USER.discount) || 0;
+  if(d <= 0 || d >= 100) return basePrice;
+  return basePrice * (1 - d / 100);
+}
+
+// ── 覆盖 formatPrice，让所有价格展示都走折扣逻辑 ──
+// 注意：App内的formatPrice不受影响，我们用全局函数 fmtP 来渲染折后价
+window.fmtP = function(basePrice){
+  var p = getDiscountedPrice(basePrice);
+  return '€' + p.toFixed(2);
+};
+
 function checkLoginState(){
-  var user = sessionStorage.getItem(SESSION_KEY);
-  if(user){
+  var stored = sessionStorage.getItem(SESSION_KEY);
+  if(stored){
+    try { CURRENT_USER = JSON.parse(stored); } catch(e){}
     document.getElementById('login-overlay').classList.add('hidden');
     App.init();
   }
@@ -7301,7 +7528,22 @@ function doLogin(){
       return;
     }
 
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ username: found.user, name: found.name || found.user }));
+    // 保存完整客户信息到session
+    CURRENT_USER = {
+      username:       found.user,
+      name:           found.name || found.user,
+      status:         found.status,
+      nome:           found.nome,
+      indirizzo:      found.indirizzo,
+      piva:           found.piva,
+      cod:            found.cod,
+      codiceFiscale:  found.codiceFiscale,
+      email:          found.email,
+      telefono:       found.telefono,
+      priceLevel:     found.priceLevel,
+      discount:       found.discount
+    };
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(CURRENT_USER));
     document.getElementById('login-overlay').classList.add('hidden');
     App.init();
   });
@@ -7405,4 +7647,4 @@ if(!IS_LOCAL_HOST){
 <!-- 更新时间: 2026-04-07 01:37:25 -->
 <!-- 更新时间: 2026-04-07 02:14:31 -->
 <!-- 更新时间: 2026-04-18 13:24:25 -->
-<!-- 更新时间: 2026-04-22 01:57:35 -->
+<!-- 更新时间: 2026-04-22 23:07:50 -->
