@@ -6147,9 +6147,8 @@ function buyNow() {
         if(video){
           video.style.width = '100%';
           video.style.height = '100%';
-          video.style.objectFit = 'cover';
-          video.style.transform = 'scale(2)';
-          video.style.transformOrigin = 'center center';
+          video.style.objectFit = 'none';
+          video.style.zoom = '2';
           video.style.display = 'block';
         }
       }, 100);
