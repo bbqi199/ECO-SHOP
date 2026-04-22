@@ -900,7 +900,6 @@
       <div class="form-item"><div class="form-label">Nome</div><input class="form-input" id="addr-name" placeholder="Inserisci nome del destinatario"></div>
       <div class="form-item"><div class="form-label">Telefono</div><input class="form-input" id="addr-phone" placeholder="Inserisci numero di telefono" type="tel"></div>
     </div>
-    <div class="form-item"><div class="form-label">Provincia/Città/Zona</div><input class="form-input" id="addr-region" placeholder="Es: Milano, MI, Lombardia"></div>
     <div class="form-item"><div class="form-label">Indirizzo Dettagliato</div><input class="form-input" id="addr-detail" placeholder="Via, numero civico, ecc."></div>
     <button class="form-submit" onclick="App.saveAddress()">Salva Indirizzo</button>
   </div>
@@ -6434,10 +6433,14 @@ function buyNow() {
       ${customerInfoHtml}
       <div class="checkout-section" style="margin:8px;border-radius:12px;overflow:hidden;">
         <div class="checkout-section-header"><span class="icon">📍</span><span class="label">Indirizzo di Spedizione</span></div>
-        ${defaultAddr?`<div class="address-card" onclick="App.showPage('page-address')">
-          <div class="address-name-row"><span class="address-name">${defaultAddr.name}</span><span class="address-phone">${defaultAddr.phone}</span></div>
-          <div class="address-detail">${defaultAddr.region} ${defaultAddr.detail}</div>
-        </div>`:`<div class="no-address" onclick="App.showAddAddress()"><span class="no-address-text">+ + Aggiungi Indirizzo</span><span>›</span></div>`}
+        ${(cu && (cu.nome || cu.telefono || cu.indirizzo)) ? `
+          <div class="address-card" style="pointer-events:none;">
+            <div class="address-name-row">
+              <span class="address-name">${cu.nome||'—'}</span>
+              <span class="address-phone">${cu.telefono||''}</span>
+            </div>
+            <div class="address-detail">${cu.indirizzo||''}</div>
+          </div>` : `<div class="no-address"><span class="no-address-text">⚠️ Informazioni indirizzo non disponibili</span></div>`}
       </div>
       <div class="checkout-section" style="margin:8px;border-radius:12px;overflow:hidden;">
         <div class="checkout-section-header"><span class="icon">📦</span><span class="label">Elenco Prodotti (${items.length} selezionati)</span></div>
@@ -6488,8 +6491,12 @@ function buyNow() {
     $('checkout-footer').dataset.items=JSON.stringify(items);
   }
   function submitOrder(){
-    const defaultAddr=state.addresses.find(a=>a.isDefault)||state.addresses[0];
-    if(!defaultAddr){ showToast('Aggiungi prima un indirizzo di spedizione'); return; }
+    const cu = window.CURRENT_USER;
+    const shippingAddr = {
+      name: cu ? (cu.nome || '') : '',
+      phone: cu ? (cu.telefono || '') : '',
+      detail: cu ? (cu.indirizzo || '') : ''
+    };
     const footer=$('checkout-footer');
     const total=parseFloat(footer.dataset.total);
     const items=JSON.parse(footer.dataset.items||'[]');
@@ -6500,7 +6507,7 @@ function buyNow() {
       no:orderNo,
       time:orderTime,
       status:'pending',
-      address:defaultAddr,
+      address:shippingAddr,
       remark,
       total,
       items:items.map(i=>{
@@ -6731,7 +6738,7 @@ function buyNow() {
               '<div class="order-goods-price-row">' + formatPrice(itemTotal) + ' × ' + item.qty + ' cartoni (' + actualQty + ')</div></div></div>';
           }).join('') + '</div>' +
           '<div class="order-card-body">' +
-            (o.address ? '<div class="order-addr">📍 ' + o.address.name + ' ' + o.address.phone + ' · ' + o.address.region + ' ' + o.address.detail + '</div>' : '') +
+            (o.address ? '<div class="order-addr">📍 ' + o.address.name + (o.address.phone?' · '+o.address.phone:'') + (o.address.detail?' · '+o.address.detail:'') + '</div>' : '') +
             (o.remark ? '<div style="font-size:12px;color:var(--text-3);margin-top:6px;">Note: ' + o.remark + '</div>' : '') +
             merchantNoteHtml + lastUpdateHtml +
             '<div style="font-size:12px;color:var(--text-3);margin-top:6px;">Data ordine: ' + o.time + '</div>' +
@@ -6767,7 +6774,7 @@ function buyNow() {
       ['Stato Ordine', {pending:'In attesa',processing:'In preparazione',done:'Completati',cancelled:'Annullato'}[o.status]||o.status],
       ['Nome Cliente', addr.name||'—'],
       ['Telefono', addr.phone||'—'],
-      ['Indirizzo di Spedizione', (addr.province||'')+(addr.city||'')+(addr.district||'')+(addr.detail||'')],
+      ['Indirizzo di Spedizione', addr.detail||'—'],
       ['Note',     o.remark||'N/A'],
       [''],  // 空行分隔
       ['Codice Prodotto','Nome Prodotto','Specifiche','Prezzo Unitario','Quantità','Subtotale'],
@@ -6943,7 +6950,7 @@ function buyNow() {
           </div>
           ${!a.isDefault?`<span style="font-size:12px;color:var(--text-3);cursor:pointer;" onclick="App.setDefaultAddr(${idx})">Imposta come Predefinito</span>`:''}
         </div>
-        <div class="addr-detail-text">${a.region} ${a.detail}</div>
+        <div class="addr-detail-text">${a.detail}</div>
         <div class="addr-actions">
           <div class="addr-action-btn" onclick="App.editAddress(${idx})">✏️ Modifica</div>
           <div class="addr-action-btn del" onclick="App.deleteAddress(${idx})">🗑️ Elimina</div>
@@ -6956,7 +6963,7 @@ function buyNow() {
       showPage('page-address');
     }
     renderAddress();
-    $('addr-name').value=''; $('addr-phone').value=''; $('addr-region').value=''; $('addr-detail').value='';
+    $('addr-name').value=''; $('addr-phone').value=''; $('addr-detail').value='';
     const modal=$('modal-address');
     const titleEl=modal.querySelector('.modal-title');
     if(titleEl){
@@ -6969,7 +6976,7 @@ function buyNow() {
   function editAddress(idx){
     state.editAddrIdx=idx;
     const a=state.addresses[idx];
-    $('addr-name').value=a.name; $('addr-phone').value=a.phone; $('addr-region').value=a.region; $('addr-detail').value=a.detail;
+    $('addr-name').value=a.name; $('addr-phone').value=a.phone; $('addr-detail').value=a.detail;
     const modal=$('modal-address');
     const titleEl=modal.querySelector('.modal-title');
     if(titleEl){
@@ -6982,10 +6989,9 @@ function buyNow() {
   function saveAddress(){
     const name=$('addr-name').value.trim();
     const phone=$('addr-phone').value.trim();
-    const region=$('addr-region').value.trim();
     const detail=$('addr-detail').value.trim();
-    if(!name||!phone||!region||!detail){ showToast('Compila tutti i campi'); return; }
-    const addr={name,phone,region,detail,isDefault:state.addresses.length===0};
+    if(!name||!phone||!detail){ showToast('Compila tutti i campi'); return; }
+    const addr={name,phone,detail,isDefault:state.addresses.length===0};
     if(state.editAddrIdx>=0){ addr.isDefault=state.addresses[state.editAddrIdx].isDefault; state.addresses[state.editAddrIdx]=addr; }
     else { state.addresses.push(addr); }
     save(); closeModal('modal-address'); renderAddress(); showToast('Indirizzo salvato');
@@ -7295,7 +7301,7 @@ function buyNow() {
   function sendOrderToSheet(order){
     if(!GSHEET_URL) return;
     var addr = order.address || {};
-    var addrText = (addr.province||'') + (addr.city||'') + (addr.district||'') + (addr.detail||'');
+    var addrText = (addr.detail||'');
 
     // 构造结构化商品明细数组（强制转数字，防止price是字符串导致toFixed报错）
     var itemRows = (order.items || []).map(function(i){
@@ -7603,7 +7609,7 @@ if(!IS_LOCAL_HOST){
 
     var addr = order.address;
     var addrText = (addr.name||'') + ' ' + (addr.phone||'') + '<br>'
-      + (addr.province||'') + (addr.city||'') + (addr.district||'') + (addr.detail||'');
+      + (addr.detail||'');
 
     var templateParams = {
       order_no:    order.no,
@@ -7647,4 +7653,4 @@ if(!IS_LOCAL_HOST){
 <!-- 更新时间: 2026-04-07 01:37:25 -->
 <!-- 更新时间: 2026-04-07 02:14:31 -->
 <!-- 更新时间: 2026-04-18 13:24:25 -->
-<!-- 更新时间: 2026-04-22 23:07:50 -->
+<!-- 更新时间: 2026-04-22 23:23:00 -->
