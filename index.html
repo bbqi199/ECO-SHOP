@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -5751,14 +5751,10 @@ const B2_IMG_MAP = {
 };
 // -----------------------------
 
+  const R2_BASE = 'https://old-boat-9019.zongweihai199.workers.dev/';
   function getImgUrl(g){
     if(g.id) {
-      // 优先使用映射表的真实后缀
-      if(B2_IMG_MAP && B2_IMG_MAP[g.id]) {
-        return 'https://old-boat-9019.zongweihai199.workers.dev/' + B2_IMG_MAP[g.id];
-      }
-      // 默认用小写 jpg
-      return 'https://old-boat-9019.zongweihai199.workers.dev/' + g.id + '.jpg';
+      return R2_BASE + g.id + '.jpg';
     }
     return '';
   }
@@ -7677,4 +7673,4 @@ if(!IS_LOCAL_HOST){
 <!-- 更新时间: 2026-04-07 01:37:25 -->
 <!-- 更新时间: 2026-04-07 02:14:31 -->
 <!-- 更新时间: 2026-04-18 13:24:25 -->
-<!-- 更新时间: 2026-04-25 03:58:49 -->
+<!-- 更新时间: 2026-05-02 20:52:52 -->
