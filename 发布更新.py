@@ -57,4 +57,8 @@ except subprocess.CalledProcessError as e:
 except Exception as e:
     print(f"\n❌ 未知错误：{e}", flush=True)
 
-input('\n按回车键退出...')
+# 双击运行时保持窗口不关闭
+try:
+    input('\n按回车键退出...')
+except EOFError:
+    pass
