@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -1150,14 +1150,10 @@ const App = (function(){
   // ---------- 图片辅助：B2图片，不回退本地 ----------
   const _imgCache = {}; // id → url | null (null=无图)
 
+  const R2_BASE = 'https://old-boat-9019.zongweihai199.workers.dev/';
   function getImgUrl(g){
-    // 优先使用 B2 图片映射
-    if(g.id && B2_IMG_MAP && B2_IMG_MAP[String(g.id)]) {
-      return 'https://old-boat-9019.zongweihai199.workers.dev/' + B2_IMG_MAP[String(g.id)];
-    }
-    // 次选：直接用商品ID构造B2 URL（小写优先）
     if(g.id) {
-      return 'https://old-boat-9019.zongweihai199.workers.dev/' + String(g.id) + '.jpg';
+      return R2_BASE + String(g.id) + '.jpg';
     }
     return '';
   }
