@@ -16,6 +16,10 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 print("🚀 开始发布...\n", flush=True)
 
 try:
+    # 第零步：先拉取远程更新（避免 push 被拒绝）
+    print("📥 拉取远程更新...", flush=True)
+    subprocess.run(['git', 'pull', '--rebase', 'origin', 'main'], check=False)
+
     # 第一步：git add 所有改动
     print("📥 git add...", flush=True)
     subprocess.run(['git', 'add', '-A'], check=True)
@@ -31,14 +35,14 @@ try:
         print(f"📝 git commit: {commit_msg}", flush=True)
         subprocess.run(['git', 'commit', '-m', commit_msg], check=True)
     else:
-        # 没有改动：强制创建一个提交（空提交）
+        # 没有改动：强制创建一个空提交
         now = datetime.now().strftime('%Y-%m-%d %H:%M')
         commit_msg = f'强制更新 {now}'
         print("⚡ 没有检测到改动，创建空提交以强制推送...", flush=True)
         subprocess.run(['git', 'commit', '--allow-empty', '-m', commit_msg], check=True)
 
     # 第三步：推送到 GitHub
-    print("📤 推送到 GitHub...", flush=True)
+    print("🚀 推送到 GitHub...", flush=True)
     subprocess.run(['git', 'push', 'origin', 'main'], check=True)
 
     print("\n🎉 发布成功！", flush=True)
