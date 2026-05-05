@@ -16,9 +16,12 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 print("🚀 开始发布...\n", flush=True)
 
 try:
-    # 第零步：先拉取远程更新（避免 push 被拒绝）
+    # 第零步：储藏未暂存的改动，再拉取远程更新
     print("📥 拉取远程更新...", flush=True)
-    subprocess.run(['git', 'pull', '--rebase', 'origin', 'main'], check=False)
+    subprocess.run(['git', 'stash', '--include-untracked'], check=False)
+    result = subprocess.run(['git', 'pull', 'origin', 'main'], capture_output=True, text=True)
+    print(result.stdout, flush=True)
+    subprocess.run(['git', 'stash', 'pop'], check=False)
 
     # 第一步：git add 所有改动
     print("📥 git add...", flush=True)
