@@ -968,9 +968,22 @@ function _ref(){
 // 注意：file:// 协议下 fetch 会被浏览器 CORS 拦截，需通过本地服务器 http://localhost 访问
 fetch('goods.json?t=' + Date.now())
     .then(res => res.json())
-    .then(data => {
+    .then(async function(data) {
         GOODS_DATA = data;
         console.log('商品数据加载完成，共 ' + GOODS_DATA.length + ' 件');
+        // 加载图片版本号后再初始化
+        try {
+            var vResp = await fetch('https://raw.githubusercontent.com/bbqi199/ECO-SHOP/main/versions.json?t=' + Date.now());
+            if(vResp.ok){
+                var raw = await vResp.json();
+                var map = {};
+                for(const [k,v] of Object.entries(raw)){
+                    map[k] = typeof v === 'object' ? v.ver : v;
+                }
+                if(typeof IMG_VERSION_MAP !== 'undefined') IMG_VERSION_MAP = map;
+                console.log('图片版本号加载完成，共 ' + Object.keys(map).length + ' 条');
+            }
+        } catch(e){ console.warn('图片版本号加载失败:', e); }
         // 数据加载完成后调用 App.init()
         if(typeof App !== 'undefined' && App.init) App.init();
     })
@@ -5756,9 +5769,11 @@ const B2_IMG_MAP = {
 // -----------------------------
 
   const R2_BASE = 'https://old-boat-9019.zongweihai199.workers.dev/';
+  let IMG_VERSION_MAP = {};
   function getImgUrl(g){
     if(g.id) {
-      return R2_BASE + g.id + '.jpg';
+      var ver = (IMG_VERSION_MAP && IMG_VERSION_MAP[g.id]) || 1;
+      return R2_BASE + g.id + '.jpg?v=' + ver;
     }
     return '';
   }
