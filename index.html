@@ -1531,7 +1531,7 @@ const App = (function(){
           <div class="qty-label">Quantità</div>
           <div class="qty-stepper">
             <button class="qty-btn minus" onclick="App.changeQty(-1)">−</button>
-            <div class="qty-num" id="qty-num">${state.currentQty * getSpecQty(state.currentSpec, state.currentGood.id)}</div>
+            <div class="qty-num" id="qty-num">${state.currentQty}</div>
             <button class="qty-btn" onclick="App.changeQty(1)">+</button>
           </div>
         </div>
@@ -1562,7 +1562,7 @@ const App = (function(){
   function changeQty(delta){
     state.currentQty = Math.max(1, state.currentQty+delta);
     const el=$('qty-num');
-    if(el) el.textContent = state.currentQty * getSpecQty(state.currentSpec, state.currentGood.id);
+    if(el) el.textContent = state.currentQty;
   }
 
   // ---------- Carrello ----------
@@ -1599,8 +1599,8 @@ const App = (function(){
   function _qty(gId){var g=GOODS_DATA.find(function(x){return String(x.id)===String(gId);});if(!g)return 0;var sp=(g.specs&&g.specs[0])||g.spec||'';var it=state.cartItems.find(function(i){return i.key===gId+'__'+sp;});return it?it.qty:0;}
   function _chg(gId,delta){var g=GOODS_DATA.find(function(x){return String(x.id)===String(gId);});if(!g)return;var sp=(g.specs&&g.specs[0])||g.spec||'';var key=gId+'__'+sp;var ix=state.cartItems.findIndex(function(i){return i.key===key;});if(ix<0){if(delta>0){state.cartItems.push({key:key,goodId:gId,spec:sp,qty:delta,checked:true});save();updateCartBadge();_ref(gId);}return;}var it=state.cartItems[ix];var n=Math.max(0,it.qty+delta);if(n===0)state.cartItems.splice(ix,1);else it.qty=n;save();updateCartBadge();_ref(gId);}
   window._chg=_chg;window._qty=_qty;window._ref=_ref;
-  function _sp(gId){var q=_qty(gId);var g=GOODS_DATA.find(function(x){return String(x.id)===String(gId);});var sp=g?((g.specs&&g.specs[0])||g.spec||''):'';var sq=getSpecQty(sp,gId);var dq=q>0?q*sq:0;return'<div class="stepper"><button class="stepper-btn minus" style="visibility:'+(q>0?'visible':'hidden')+'" onclick="event.stopPropagation();_chg(\''+gId+'\',-1)">-</button><span class="stepper-num">'+dq+'</span><button class="stepper-btn plus" onclick="event.stopPropagation();_chg(\''+gId+'\',1)">+</button></div>';}
-  function _ref(gId){var g=GOODS_DATA.find(function(x){return String(x.id)===String(gId);});var sp=g?((g.specs&&g.specs[0])||g.spec||''):'';var sq=getSpecQty(sp,gId);document.querySelectorAll('[data-gid]').forEach(function(el){if(el.getAttribute('data-gid')!==String(gId))return;var sp2=el.querySelector('.stepper');if(!sp2)return;var q=_qty(gId);var dq=q>0?q*sq:0;var mn=sp2.querySelector('.minus');var nm=sp2.querySelector('.stepper-num');if(nm)nm.textContent=dq;if(mn)mn.style.visibility=q>0?'visible':'hidden';});document.querySelectorAll('[data-sid]').forEach(function(el){if(el.getAttribute('data-sid')!==String(gId))return;var sp2=el.querySelector('.stepper');if(!sp2)return;var q=_qty(gId);var dq=q>0?q*sq:0;var mn=sp2.querySelector('.minus');var nm=sp2.querySelector('.stepper-num');if(nm)nm.textContent=dq;if(mn)mn.style.visibility=q>0?'visible':'hidden';});}
+  function _sp(gId){var q=_qty(gId);var g=GOODS_DATA.find(function(x){return String(x.id)===String(gId);});var sp=g?((g.specs&&g.specs[0])||g.spec||''):'';return'<div class="stepper"><button class="stepper-btn minus" style="visibility:'+(q>0?'visible':'hidden')+'" onclick="event.stopPropagation();_chg(''+gId+'',-1)">-</button><span class="stepper-num">'+q+'</span><button class="stepper-btn plus" onclick="event.stopPropagation();_chg(''+gId+'',1)">+</button></div>';}
+  function _ref(gId){var g=GOODS_DATA.find(function(x){return String(x.id)===String(gId);});var sp=g?((g.specs&&g.specs[0])||g.spec||''):'';document.querySelectorAll('[data-gid]').forEach(function(el){if(el.getAttribute('data-gid')!==String(gId))return;var sp2=el.querySelector('.stepper');if(!sp2)return;var q=_qty(gId);var mn=sp2.querySelector('.minus');var nm=sp2.querySelector('.stepper-num');if(nm)nm.textContent=q;if(mn)mn.style.visibility=q>0?'visible':'hidden';});document.querySelectorAll('[data-sid]').forEach(function(el){if(el.getAttribute('data-sid')!==String(gId))return;var sp2=el.querySelector('.stepper');if(!sp2)return;var q=_qty(gId);var mn=sp2.querySelector('.minus');var nm=sp2.querySelector('.stepper-num');if(nm)nm.textContent=q;if(mn)mn.style.visibility=q>0?'visible':'hidden';});}
   function quickAddCart(goodId){
     const g=GOODS_DATA.find(x=>String(x.id)===String(goodId));
     if(!g) return;
